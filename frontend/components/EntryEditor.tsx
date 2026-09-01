@@ -45,6 +45,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
 
     useEffect(() => {
         if (isFirstRender.current) {
+            window.scrollTo(0, 0);
             isFirstRender.current = false;
             return
         }

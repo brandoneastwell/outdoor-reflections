@@ -52,6 +52,11 @@ export default function Entries() {
                             { entry.content.map((paragraph, index) =>
                                 <p key={index} className="blur-[1.5px] text-xs">{paragraph}</p>
                             )}
+                            <svg viewBox="0 0 320 920">
+                                {entry.drawings.map((drawPath, index) => (
+                                    <path key={index} d={drawPath.path} fill={drawPath.color} />
+                                ))}
+                            </svg>
                         </div>
                     </div>
                     ))}
