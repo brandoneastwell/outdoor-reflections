@@ -40,7 +40,7 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
             if (isSigningIn) await login(user);
             else await createAccount(user);
 
-            const entries: SyncResponse | undefined = await syncPendingEntries();
+            await syncPendingEntries();
             router.push("/entries");
         } catch (error) {
             setError(error instanceof Error ? error.message : "Unable to sign in");

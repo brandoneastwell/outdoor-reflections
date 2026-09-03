@@ -36,7 +36,7 @@ export default function TopBar() {
                 <BarItem
                     svgPaths={SVG_PATHS.flowerIcon}
                     label="reflections"
-                    onClick={toggle}
+                    onClick={() => router.push("/entries")}
                     iconSize={42}
                     strokeWidth={1.5}
                 />
