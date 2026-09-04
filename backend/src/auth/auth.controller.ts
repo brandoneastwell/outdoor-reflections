@@ -23,6 +23,13 @@ import {setCookie} from "./helpers";
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async me(@Req() req: Request, @Res() res: Response) {
+    const user = req.user as SafeUser
+    return user.id
+  }
+
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {

@@ -42,7 +42,7 @@ export default function Entries() {
             { loading && <p>Loading...</p> }
             { !loading && entries.length === 0 && <p>Create your first entry</p> }
             { !loading &&
-                <div className={"grid grid-cols-2 gap-2 font-mono sm:grid-cols-3 lg:grid-cols-4 lg:gap-4 lg:px-10 "}>
+                <div className={"grid grid-cols-2 gap-2 gap-y-8 font-mono sm:grid-cols-3 lg:grid-cols-4 lg:gap-4 lg:px-10"}>
                     { entries.map(entry => (
                     <div key={entry.id} onClick={() => handleEntryClick(entry.id)} className="flex flex-col gap-1 p-3 rounded-xl bg-white/90 aspect-square hover:cursor-pointer">
                         <div className="flex flex-row justify-between w-full h-6 px-1 overflow-hidden">
