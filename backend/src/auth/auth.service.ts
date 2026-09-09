@@ -42,8 +42,7 @@ export class AuthService {
   async login(user: SafeUser) {
     this.logger.log(`User ${user.email} attempting login`);
     const exists = await this.authRepository.findRefreshTokenByUser(user.id);
-    if (exists)
-      throw new ConflictException('User already signed in on this device');
+    if (exists) throw new ConflictException('User already signed in on this device');
 
     const session: RefreshToken =
       await this.authRepository.createRefreshSession({
@@ -72,8 +71,7 @@ export class AuthService {
   }
 
   async isRefreshTokenValid(refreshSessionId: string, token: string) {
-    const refresh: RefreshToken | null =
-      await this.authRepository.findRefreshToken(refreshSessionId);
+    const refresh: RefreshToken | null = await this.authRepository.findRefreshToken(refreshSessionId);
     if (!refresh) throw new UnauthorizedException('User not signed in');
     if (refresh.tokenHash)
       return await bcrypt.compare(token, refresh.tokenHash);

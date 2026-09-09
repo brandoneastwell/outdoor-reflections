@@ -2,8 +2,7 @@ import { Strategy } from 'passport-local';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { SafeUser, UserDto } from '../user/user.types';
-import { z } from 'zod';
+import { SafeUser } from '../user/user.types';
 import { CredentialsSchema } from './auth.dto';
 
 @Injectable()

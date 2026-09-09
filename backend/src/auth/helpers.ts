@@ -1,4 +1,4 @@
-export const setCookie = (res: any, token: any) => {
+export function setTokensInCookie(res: any, token: any) {
     res.cookie('access_token', token.access_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -12,4 +12,11 @@ export const setCookie = (res: any, token: any) => {
         sameSite: 'lax',
         path: '/',
     });
+}
+
+export function getTokensFromCookie(req) {
+    if (req && req.cookies) {
+        return {refresh_token: req.cookies['refresh_token'], access_token: req.cookies['access_token']};
+    }
+    return null;
 }

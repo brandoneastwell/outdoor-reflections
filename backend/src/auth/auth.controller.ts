@@ -17,7 +17,7 @@ import { JwtAuthGuard } from './jwt-auth-guard';
 import { CredentialsDto } from './auth.dto';
 import { SafeUser } from '../user/user.types';
 import { GoogleAuthGuard } from './google-auth-guard';
-import {setCookie} from "./helpers";
+import {setTokensInCookie} from "./helpers";
 
 @Controller('auth')
 export class AuthController {
@@ -25,7 +25,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async me(@Req() req: Request, @Res() res: Response) {
+  async me(@Req() req: Request) {
     const user = req.user as SafeUser
     return user.id
   }
@@ -34,7 +34,7 @@ export class AuthController {
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {
     const token = await this.authService.login(req.user as SafeUser);
-    setCookie(res, token)
+    setTokensInCookie(res, token)
     return res.status(201).end();
   }
 
@@ -43,7 +43,7 @@ export class AuthController {
   async register(@Body() credentials: CredentialsDto, @Res() res: Response) {
     const user: SafeUser = await this.authService.register(credentials);
     const token = await this.authService.login(user)
-    setCookie(res, token)
+    setTokensInCookie(res, token)
     return res.status(201).end();
   }
 
@@ -67,10 +67,9 @@ export class AuthController {
     return res.status(200).json({ message: 'Logged out' });
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('refresh')
   async refresh(@Req() req: Request) {
-    const refreshToken = req.cookies['refresh_token'];
+    const refreshToken: string = req.cookies['refresh_token'];
     if (!refreshToken) throw new UnauthorizedException('User is not signed in');
     const user: SafeUser = req.user as SafeUser;
     return this.authService.refresh(user, refreshToken);
