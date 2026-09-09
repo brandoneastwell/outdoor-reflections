@@ -174,7 +174,7 @@ describe('SyncService integration', () => {
     expect(result.count.total).toBe(2);
     expect(result.count.updated).toBe(1);
     expect(result.count.failed).toBeGreaterThan(0);
-    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors?.length).toBeGreaterThan(0);
     expect(result.errors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

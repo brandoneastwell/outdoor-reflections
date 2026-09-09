@@ -1,4 +1,5 @@
 import { PrismaService } from './prisma.service';
+import {Reflection} from "../../generated/prisma/client";
 
 export const seedUser = (email: string, prisma: PrismaService) => {
   return prisma.userAccount.create({
@@ -74,7 +75,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-01T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-01T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-01T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-01T09:00:00.000Z'),
     },
     {
       id: '22222222-2222-2222-2222-222222222222',
@@ -86,7 +86,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-02T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-02T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-02T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-02T09:00:00.000Z'),
     },
     {
       id: '33333333-3333-3333-3333-333333333333',
@@ -98,7 +97,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-03T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-03T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-03T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-03T09:00:00.000Z'),
     },
     {
       id: '77777777-7777-7777-7777-777777777777',
@@ -110,7 +108,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-04T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-04T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-04T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-04T09:00:00.000Z'),
     },
     {
       id: '88888888-8888-8888-8888-888888888888',
@@ -122,7 +119,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-05T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-05T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-05T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-05T09:00:00.000Z'),
     },
     {
       id: '99999999-9999-9999-9999-999999999999',
@@ -134,7 +130,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-06T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-06T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-06T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-06T09:00:00.000Z'),
     },
     {
       id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -146,7 +141,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-07T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-07T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-07T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-07T09:00:00.000Z'),
     },
     {
       id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -158,7 +152,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-08T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-08T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-08T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-08T09:00:00.000Z'),
     },
     {
       id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
@@ -170,7 +163,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-09T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-09T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-09T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-09T09:00:00.000Z'),
     },
     {
       id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
@@ -182,7 +174,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-10T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-10T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-10T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-10T09:00:00.000Z'),
     },
     {
       id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
@@ -194,7 +185,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-11T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-11T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-11T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-11T09:00:00.000Z'),
     },
     {
       id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
@@ -206,7 +196,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-12T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-12T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-12T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-12T09:00:00.000Z'),
     },
   ];
 
@@ -222,7 +211,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-04T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-04T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-04T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-04T09:00:00.000Z'),
     },
     {
       id: '55555555-5555-5555-5555-555555555555',
@@ -234,7 +222,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-05T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-05T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-05T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-05T09:00:00.000Z'),
     },
     {
       id: '66666666-6666-6666-6666-666666666666',
@@ -246,7 +233,6 @@ export const seedExplicitReflections = async (
       createdAt: new Date('2026-08-06T09:00:00.000Z'),
       lastSyncedAt: new Date('2026-08-06T09:00:00.000Z'),
       lastEditedAt: new Date('2026-08-06T09:00:00.000Z'),
-      updatedAt: new Date('2026-08-06T09:00:00.000Z'),
     },
   ];
 

@@ -27,7 +27,6 @@ describe('SyncService', () => {
     lastSyncedAt: new Date('2026-08-13T10:00:00.000Z').toISOString(),
     lastEditedAt: new Date('2026-08-13T10:00:00.000Z').toISOString(),
     createdAt: new Date('2026-08-13T10:00:00.000Z').toISOString(),
-    updatedAt: new Date('2026-08-13T10:00:00.000Z').toISOString(),
   };
 
   beforeEach(async () => {
@@ -54,8 +53,8 @@ describe('SyncService', () => {
     jest.restoreAllMocks();
   });
 
-  it('returns an empty result for an empty batch', async () => {
-    await expect(syncService.syncEntries([], user)).resolves.toEqual([]);
+  it('returns an error result for an empty batch', async () => {
+    await expect(syncService.syncEntries([], user)).rejects.toThrow(Error);
     expect(mockReflectionRepo.upsertMany).not.toHaveBeenCalled();
   });
 
