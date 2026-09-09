@@ -14,9 +14,9 @@ export function setTokensInCookie(res: any, token: any) {
     });
 }
 
-export function getTokensFromCookie(req) {
+export function getJWTFromCookie(req) {
     if (req && req.cookies) {
-        return {refresh_token: req.cookies['refresh_token'], access_token: req.cookies['access_token']};
+        return req.cookies['access_token'];
     }
     return null;
 }
