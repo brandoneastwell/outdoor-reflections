@@ -2,6 +2,7 @@
 
 import {createContext, ReactNode, useEffect, useState} from "react";
 import {API_URL} from "@/constants/apiUrl";
+import {refresh} from "@/lib/api/auth";
 
 type AuthContextType = {
     userId: number | null;
@@ -17,18 +18,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         async function loadUser() {
             try {
-                const response = await fetch(`${API_URL}/auth/me`, {
+                let res = await fetch(`${API_URL}/auth/me`, {
                     credentials: "include",
                 });
 
-                if (!response.ok) {
+                if (res.status === 401) {
+                    const refreshRes = await refresh();
+                    if (!refreshRes.ok) {
+                        setUserId(null);
+                        return;
+                    }
+
+                    // Retry the original request after refreshing
+                    res = await fetch(`${API_URL}/auth/me`, {
+                        credentials: "include",
+                    });
+                }
+
+                if (!res.ok) {
                     setUserId(null);
                     return;
                 }
 
-                const user = await response.json();
+                const user = await res.json();
                 setUserId(user.id);
-            } catch {
+            } catch(error) {
                 setUserId(null);
             }
         }

@@ -40,3 +40,16 @@ export function loginWithProvider(provider: Providers): void {
     window.location.href = `${API_URL}/auth/${provider}`;
 }
 
+export function refresh() {
+    return fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+    });
+}
+
+export async function me() {
+    return await fetch(`${API_URL}/auth/me`, {
+        credentials: "include",
+    });
+}
+
