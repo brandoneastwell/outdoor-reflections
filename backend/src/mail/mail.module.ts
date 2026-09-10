@@ -17,8 +17,7 @@ import { MailService } from './mail.service';
         return nodemailer.createTransport({
           host: configService.getOrThrow<string>('SMTP_HOST'),
           port: Number(configService.get<string>('SMTP_PORT') ?? 587),
-          secure: configService.get<string>('SMTP_SECURE') === 'true',
-          auth: user && pass ? { user, pass } : undefined,
+          auth: { user, pass }
         });
       },
     },

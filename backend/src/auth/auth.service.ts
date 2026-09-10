@@ -1,7 +1,7 @@
 import {
   ConflictException,
   Injectable,
-  Logger,
+  Logger, NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { LoginProvider, SafeUser } from '../user/user.types';
@@ -13,6 +13,7 @@ import { AuthRepository } from './auth.repository';
 import { REFRESH_TOKEN_AGE_DAYS } from './constants';
 import { RefreshToken } from '../../generated/prisma/client';
 import { MailService } from '../mail/mail.service';
+import {ConfigService} from "@nestjs/config";
 
 @Injectable()
 export class AuthService {
@@ -21,6 +22,7 @@ export class AuthService {
     private authRepository: AuthRepository,
     private jwtService: JwtService,
     private mailService: MailService,
+    private configService: ConfigService
   ) {}
   private readonly logger = new Logger(AuthService.name);
 
@@ -117,12 +119,13 @@ export class AuthService {
 
   async sendPasswordResetLink(email: string) {
     const user = await this.userService.findUserByEmail(email);
-    if (!user)
-      throw new UnauthorizedException('User with this email does not exist');
+    if (!user) throw new NotFoundException('User not found');
 
-    const token = await this.jwtService.signAsync(
-      { email },
-      { expiresIn: '15m' },
+    const token = await this.jwtService.signAsync({ email },
+      {
+        secret: this.configService.get('JWT_SECRET') + user.password,
+        expiresIn: '15m',
+      },
     );
 
     await this.mailService.sendPasswordResetEmail(email, token);
