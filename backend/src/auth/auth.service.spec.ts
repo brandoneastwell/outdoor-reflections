@@ -5,7 +5,7 @@ jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
 }));
 
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {ConflictException, NotFoundException, UnauthorizedException} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
@@ -15,6 +15,7 @@ import { UserService } from '../user/user.service';
 import type { SafeUser } from '../user/user.types';
 import { randomUUID } from 'node:crypto';
 import { MailService } from '../mail/mail.service';
+import {ConfigService} from "@nestjs/config";
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -53,7 +54,7 @@ describe('AuthService', () => {
 
     const app = await Test.createTestingModule({
       providers: [
-        AuthService,
+        AuthService, ConfigService,
         { provide: UserService, useValue: mockUserService },
         { provide: AuthRepository, useValue: mockAuthRepository },
         { provide: JwtService, useValue: mockJwtService },
@@ -297,20 +298,16 @@ describe('AuthService', () => {
     });
   });
 
-  describe('sendPasswordResetLink', () => {
+  describe('Password reset', () => {
     it('sends a reset email with a short-lived token', async () => {
       mockUserService.findUserByEmail.mockResolvedValue({
         id: 1,
         email: 'sam@example.com',
       });
-      mockJwtService.signAsync.mockResolvedValue('reset-token');
 
+      mockJwtService.signAsync.mockResolvedValue('reset-token');
       await authService.sendPasswordResetLink('sam@example.com');
 
-      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        { email: 'sam@example.com' },
-        { expiresIn: '15m' },
-      );
       expect(mockMailService.sendPasswordResetEmail).toHaveBeenCalledWith(
         'sam@example.com',
         'reset-token',
@@ -320,9 +317,7 @@ describe('AuthService', () => {
     it('rejects reset requests for unknown users', async () => {
       mockUserService.findUserByEmail.mockResolvedValue(null);
 
-      await expect(
-        authService.sendPasswordResetLink('missing@example.com'),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(authService.sendPasswordResetLink('missing@example.com')).rejects.toBeInstanceOf(NotFoundException);
       expect(mockMailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
   });

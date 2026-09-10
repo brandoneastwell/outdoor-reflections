@@ -4,7 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
-  HttpStatus,
+  HttpStatus, NotFoundException,
   Post, Query,
   Req,
   Res,
@@ -85,8 +85,16 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body() body: EmailDto) {
-    return await this.authService.sendPasswordResetLink(body.email)
+  async forgotPassword(@Body() body: EmailDto, @Res() res: Response) {
+    const message = "If the email matches an account in our system, a password reset link has been sent."
+
+    try {
+      await this.authService.sendPasswordResetLink(body.email)
+      return res.status(200).json({ message })
+    } catch (error) {
+      if (error instanceof NotFoundException) return res.status(200).json({ message })
+      return error
+    }
   }
 
   @Post('reset-password')
