@@ -9,6 +9,7 @@ import { UserRepository } from '../user/user.repository';
 import { PrismaService } from '../database/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { MailService } from '../mail/mail.service';
 
 describe('AuthService integration', () => {
   let app: TestingModule;
@@ -17,6 +18,9 @@ describe('AuthService integration', () => {
   let authRepo: AuthRepository;
   let jwtService: JwtService;
   let prisma: PrismaService;
+  const mailService = {
+    sendPasswordResetEmail: jest.fn(),
+  };
 
   beforeAll(async () => {
     app = await Test.createTestingModule({
@@ -36,6 +40,7 @@ describe('AuthService integration', () => {
         PrismaService,
         UserRepository,
         AuthRepository,
+        { provide: MailService, useValue: mailService },
       ],
     }).compile();
 
@@ -93,7 +98,7 @@ describe('AuthService integration', () => {
     });
     expect(refreshPayload).toHaveProperty('sid');
 
-    const refreshed = await authService.refresh(safeUser, tokens.refresh_token);
+    const refreshed = await authService.refresh(tokens.refresh_token);
     const updatedSession = await authRepo.findRefreshToken(storedSession!.id);
 
     expect(updatedSession).toBeDefined();

@@ -12,6 +12,7 @@ import { CredentialsDto } from './auth.dto';
 import { AuthRepository } from './auth.repository';
 import { REFRESH_TOKEN_AGE_DAYS } from './constants';
 import { RefreshToken } from '../../generated/prisma/client';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -19,6 +20,7 @@ export class AuthService {
     private userService: UserService,
     private authRepository: AuthRepository,
     private jwtService: JwtService,
+    private mailService: MailService,
   ) {}
   private readonly logger = new Logger(AuthService.name);
 
@@ -42,7 +44,8 @@ export class AuthService {
   async login(user: SafeUser) {
     this.logger.log(`User ${user.email} attempting login`);
     const exists = await this.authRepository.findRefreshTokenByUser(user.id);
-    if (exists) throw new ConflictException('User already signed in on this device');
+    if (exists)
+      throw new ConflictException('User already signed in on this device');
 
     const session: RefreshToken =
       await this.authRepository.createRefreshSession({
@@ -71,7 +74,8 @@ export class AuthService {
   }
 
   async isRefreshTokenValid(refreshSessionId: string, token: string) {
-    const refresh: RefreshToken | null = await this.authRepository.findRefreshToken(refreshSessionId);
+    const refresh: RefreshToken | null =
+      await this.authRepository.findRefreshToken(refreshSessionId);
     if (!refresh) throw new UnauthorizedException('User not signed in');
     if (refresh.tokenHash)
       return await bcrypt.compare(token, refresh.tokenHash);
@@ -86,7 +90,9 @@ export class AuthService {
     const isValid = await this.isRefreshTokenValid(payload.sid, refreshToken);
     if (!isValid) throw new UnauthorizedException('Invalid refresh token');
 
-    const user: SafeUser = await this.userService.findUserByID(payload.sub) as SafeUser;
+    const user: SafeUser = (await this.userService.findUserByID(
+      payload.sub,
+    )) as SafeUser;
     return this.createTokens(user, payload.sid);
   }
 
@@ -109,7 +115,15 @@ export class AuthService {
     };
   }
 
-  async forgotPassword(email: string) {
-    if (!email) throw new UnauthorizedException('Invalid email')
+  async sendPasswordResetLink(email: string) {
+    const user = await this.userService.findUserByEmail(email);
+    if (!user)
+      throw new UnauthorizedException('User with this email does not exist');
+
+    const token = await this.jwtService.signAsync(
+      { email },
+      { expiresIn: '15m' },
+    );
+    await this.mailService.sendPasswordResetEmail(email, token);
   }
 }

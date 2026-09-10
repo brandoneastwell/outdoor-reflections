@@ -9,6 +9,7 @@ import { AuthRepository } from './auth.repository';
 import { AuthController } from './auth.controller';
 import { GoogleStrategy } from './google.strategy';
 import {JwtStrategy} from "./jwt.strategy";
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import {JwtStrategy} from "./jwt.strategy";
       signOptions: { expiresIn: '10m' },
     }),
     DatabaseModule,
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, JwtStrategy, AuthRepository, GoogleStrategy],

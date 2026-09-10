@@ -14,12 +14,14 @@ import { AuthRepository } from './auth.repository';
 import { UserService } from '../user/user.service';
 import type { SafeUser } from '../user/user.types';
 import { randomUUID } from 'node:crypto';
+import { MailService } from '../mail/mail.service';
 
 describe('AuthService', () => {
   let authService: AuthService;
 
   const mockUserService = {
     findUserByEmail: jest.fn(),
+    findUserByID: jest.fn(),
     createUser: jest.fn(),
   };
 
@@ -35,6 +37,10 @@ describe('AuthService', () => {
     verifyAsync: jest.fn(),
   };
 
+  const mockMailService = {
+    sendPasswordResetEmail: jest.fn(),
+  };
+
   const compareMock = jest.mocked(bcrypt.compare);
   const hashMock = jest.mocked(bcrypt.hash);
 
@@ -42,6 +48,8 @@ describe('AuthService', () => {
     jest.clearAllMocks();
     compareMock.mockReset();
     hashMock.mockReset();
+    mockJwtService.signAsync.mockReset();
+    mockJwtService.verifyAsync.mockReset();
 
     const app = await Test.createTestingModule({
       providers: [
@@ -49,6 +57,7 @@ describe('AuthService', () => {
         { provide: UserService, useValue: mockUserService },
         { provide: AuthRepository, useValue: mockAuthRepository },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: MailService, useValue: mockMailService },
       ],
     }).compile();
 
@@ -201,16 +210,17 @@ describe('AuthService', () => {
         id: 'session-1',
         tokenHash: 'hashed-token',
       });
+      mockUserService.findUserByID.mockResolvedValue({
+        id: 1,
+        email: 'sam@example.com',
+      });
       compareMock.mockResolvedValue(true);
       mockJwtService.signAsync
         .mockResolvedValueOnce('new-refresh-token')
         .mockResolvedValueOnce('new-access-token');
       hashMock.mockResolvedValue('hashed-new-refresh-token');
 
-      const result = await authService.refresh(
-        { id: 1, email: 'sam@example.com' },
-        'refresh-token',
-      );
+      const result = await authService.refresh('refresh-token');
 
       expect(mockJwtService.verifyAsync).toHaveBeenCalledWith('refresh-token', {
         secret: process.env.JWT_REFRESH_SECRET,
@@ -232,12 +242,9 @@ describe('AuthService', () => {
       });
       compareMock.mockResolvedValue(false);
 
-      await expect(
-        authService.refresh(
-          { id: 1, email: 'sam@example.com' },
-          'refresh-token',
-        ),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(authService.refresh('refresh-token')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -287,6 +294,36 @@ describe('AuthService', () => {
           ]),
         );
       }
+    });
+  });
+
+  describe('sendPasswordResetLink', () => {
+    it('sends a reset email with a short-lived token', async () => {
+      mockUserService.findUserByEmail.mockResolvedValue({
+        id: 1,
+        email: 'sam@example.com',
+      });
+      mockJwtService.signAsync.mockResolvedValue('reset-token');
+
+      await authService.sendPasswordResetLink('sam@example.com');
+
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
+        { email: 'sam@example.com' },
+        { expiresIn: '15m' },
+      );
+      expect(mockMailService.sendPasswordResetEmail).toHaveBeenCalledWith(
+        'sam@example.com',
+        'reset-token',
+      );
+    });
+
+    it('rejects reset requests for unknown users', async () => {
+      mockUserService.findUserByEmail.mockResolvedValue(null);
+
+      await expect(
+        authService.sendPasswordResetLink('missing@example.com'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(mockMailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
   });
 });
