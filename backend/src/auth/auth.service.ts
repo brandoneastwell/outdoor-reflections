@@ -124,6 +124,7 @@ export class AuthService {
       { email },
       { expiresIn: '15m' },
     );
+
     await this.mailService.sendPasswordResetEmail(email, token);
   }
 }

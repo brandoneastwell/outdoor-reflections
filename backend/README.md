@@ -31,6 +31,22 @@
 $ npm install
 ```
 
+Configure the SMTP transport and frontend URL used by password-reset emails:
+
+```dotenv
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+MAIL_FROM="Outdoor Reflections <no-reply@example.com>"
+FRONTEND_URL=http://localhost:3000
+```
+
+`SMTP_USER` and `SMTP_PASSWORD` can be omitted when the SMTP server does not
+require authentication. Use `SMTP_SECURE=true` for implicit TLS (usually port
+465); STARTTLS transports normally use `false`.
+
 ## Compile and run the project
 
 ```bash

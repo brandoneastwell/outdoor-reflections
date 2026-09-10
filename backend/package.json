@@ -22,6 +22,7 @@
     "db:migrate:test": "dotenv -e .env.test -- prisma migrate deploy"
   },
   "dependencies": {
+    "@nestjs-modules/mailer": "^2.3.7",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -34,7 +35,9 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "groq-sdk": "^1.5.0",
+    "handlebars": "^4.7.9",
     "nestjs-zod": "^5.5.0",
+    "nodemailer": "^10.0.3",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
@@ -54,6 +57,7 @@
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^24.13.3",
+    "@types/nodemailer": "^8.0.1",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
@@ -88,5 +92,11 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "testEnvironment": "node"
+  },
+  "allowScripts": {
+    "@nestjs/core@11.1.19": true,
+    "@prisma/engines@7.9.0": true,
+    "fsevents@2.3.3": true,
+    "prisma@7.9.0": true
   }
 }
