@@ -17,6 +17,11 @@ export const CredentialsSchema = z
   )
   .required();
 
-export class PasswordDto extends createZodDto(PasswordSchema) {}
+const ResetPasswordSchema = z.object({
+    token: z.string().min(1),
+    password,
+});
+
+export class ResetPasswordDto extends createZodDto(ResetPasswordSchema) {}
 export class EmailDto extends createZodDto(EmailSchema) {}
 export class CredentialsDto extends createZodDto(CredentialsSchema) {}

@@ -20,7 +20,7 @@ export class MailService {
     const frontendUrl = this.configService
       .getOrThrow<string>('FRONTEND_URL')
       .replace(/\/$/, '');
-    const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
 
     this.logger.log('Sending password reset email to ' + recipient)
     await this.transporter.sendMail({
