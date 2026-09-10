@@ -23,7 +23,7 @@ export const renderPasswordResetEmail = ({
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Reset your Outdoor Reflections password</title>
   </head>
-  <body style="margin:0; background:#f7efe9; color:#495867; font-family:Arial, Helvetica, sans-serif;">
+  <body style="margin:0; background:#f7efe9; color:#495867; font-family:'TASA Orbiter', Arial, Helvetica, sans-serif;">
     <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
       Reset your Outdoor Reflections password. This link expires in 15 minutes.
     </div>
@@ -36,7 +36,7 @@ export const renderPasswordResetEmail = ({
                 <p style="margin:0 0 10px; color:#c18c5d; font-size:12px; font-weight:700; letter-spacing:2.4px; text-transform:uppercase;">
                   Outdoor Reflections
                 </p>
-                <h1 style="margin:0; color:#ce796b; font-family:Georgia, 'Times New Roman', serif; font-size:36px; line-height:1.05; font-weight:700;">
+                <h1 style="margin:0; color:#ce796b; font-family:'Indie Flower', 'Bradley Hand', 'Segoe Print', cursive; font-size:36px; line-height:1.05; font-weight:700;">
                   Reset your password
                 </h1>
               </td>
