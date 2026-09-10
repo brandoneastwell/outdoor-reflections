@@ -7,8 +7,8 @@ import {User, UserSchema} from "@/types/userTypes";
 import {createAccount, login, loginWithProvider} from "@/lib/api/auth";
 import {Providers} from "@/types/authTypes";
 import {useRouter} from "next/navigation";
-import {SyncResponse} from "@/types/entryTypes";
 import {syncPendingEntries} from "@/lib/api/reflections";
+import Link from "next/link";
 
 
 type AuthFormProps = {
@@ -92,9 +92,9 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
                     />
                     remember me
                 </label>
-                <button type="button" className="text-sm text-rose transition-colors hover:text-camel">
+                <Link href={'/auth/forgot-password'} type="button" className="text-sm text-rose transition-colors hover:text-camel">
                     forgot password
-                </button>
+                </Link>
             </div>
 
             <Button type="submit" disabled={isSubmitting} className="h-12 rounded-2xl bg-rose text-background hover:bg-rose/90">
