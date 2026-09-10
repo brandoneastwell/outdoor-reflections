@@ -14,7 +14,7 @@ import {
 import type { Request, Response } from 'express';
 import { LocalAuthGuard } from './local-auth-guard';
 import { JwtAuthGuard } from './jwt-auth-guard';
-import { CredentialsDto } from './auth.dto';
+import {CredentialsDto, EmailDto} from './auth.dto';
 import { SafeUser } from '../user/user.types';
 import { GoogleAuthGuard } from './google-auth-guard';
 import {setTokensInCookie} from "./helpers";
@@ -82,5 +82,10 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request) {
     return this.authService.loginWithGoogle(req);
+  }
+
+  @Post('forgot')
+  async forgotPassword(@Body() body: EmailDto) {
+    return await this.authService.forgotPassword(body.email)
   }
 }

@@ -108,4 +108,8 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload),
     };
   }
+
+  async forgotPassword(email: string) {
+    if (!email) throw new UnauthorizedException('Invalid email')
+  }
 }

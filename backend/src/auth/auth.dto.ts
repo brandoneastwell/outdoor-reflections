@@ -11,4 +11,9 @@ export const CredentialsSchema = z
   )
   .required();
 
+export const EmailSchema = z.object({
+    email: z.string().trim(),
+})
+
+export class EmailDto extends createZodDto(EmailSchema) {}
 export class CredentialsDto extends createZodDto(CredentialsSchema) {}
