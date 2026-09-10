@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger, NotFoundException,
@@ -129,5 +130,23 @@ export class AuthService {
     );
 
     await this.mailService.sendPasswordResetEmail(email, token);
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const decoded = this.jwtService.decode(token) as { email: string }
+    if (!decoded) throw new BadRequestException('Invalid token')
+
+    const user = await this.userService.findUserByEmail(decoded.email)
+    if (!user) throw new BadRequestException('User does not exist')
+    const secret = this.configService.get('JWT_SECRET') + user.password
+
+    try {
+      this.jwtService.verify(token, { secret })
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10)
+      await this.userService.updatePassword(user.id, hashedPassword)
+    } catch (e) {
+      throw new BadRequestException('Token invalid or has expired')
+    }
   }
 }
