@@ -142,10 +142,9 @@ export class AuthService {
 
     try {
       this.jwtService.verify(token, { secret })
-
       const hashedPassword = await bcrypt.hash(newPassword, 10)
       await this.userService.updatePassword(user.id, hashedPassword)
-    } catch (e) {
+    } catch (error) {
       throw new BadRequestException('Token invalid or has expired')
     }
   }

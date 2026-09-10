@@ -84,8 +84,13 @@ export class AuthController {
     return this.authService.loginWithGoogle(req);
   }
 
-  @Post('forgot')
+  @Post('forgot-password')
   async forgotPassword(@Body() body: EmailDto) {
+    return await this.authService.sendPasswordResetLink(body.email)
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: PasswordDto) {
     return await this.authService.sendPasswordResetLink(body.email)
   }
 }
