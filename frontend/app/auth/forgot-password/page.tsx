@@ -19,10 +19,12 @@ export default function Page() {
         if (!emailResult.success) {
             setMessage(null)
             setError(emailResult.error.issues[0].message);
+            return
         }
 
-        await forgotPassword(email);
-        setMessage('Check your email for a reset link.')
+        const data = await forgotPassword(email);
+        data.message && setMessage(data.message)
+        setError(null)
     }
 
     return (
@@ -40,7 +42,7 @@ export default function Page() {
                        className="w-full h-12 rounded-2xl border border-border bg-white/90 px-4 text-sm text-blue-slate outline-none transition-shadow placeholder:text-blue-slate/35 focus:border-rose/40 focus:shadow-[0_0_0_3px_rgba(206,121,107,0.12)]" />
                 <Button onClick={handleResetLink} className="w-full h-12 rounded-2xl bg-rose text-background hover:bg-rose/90">Send reset link</Button>
                 {error && !message && <p className="text-sm text-destructive place-self-center">{error}</p>}
-                {message && <p className="text-sm text-green-500 place-self-center">{message}</p>}
+                {message && <p className="text-sm text-green-600 text-center">{message}</p>}
                 <p className="text-sm mt-4">Remember your password? <a href="/auth" className="text-rose underline">Login here</a></p>
             </div>
         </div>
