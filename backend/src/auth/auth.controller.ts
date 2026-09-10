@@ -71,8 +71,7 @@ export class AuthController {
   async refresh(@Req() req: Request) {
     const refreshToken: string = req.cookies['refresh_token'];
     if (!refreshToken) throw new UnauthorizedException('User is not signed in');
-    const user: SafeUser = req.user as SafeUser;
-    return this.authService.refresh(user, refreshToken);
+    return this.authService.refresh(refreshToken);
   }
 
   @Get('google')

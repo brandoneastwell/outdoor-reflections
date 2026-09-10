@@ -78,7 +78,7 @@ export class AuthService {
     return false;
   }
 
-  async refresh(user: SafeUser, refreshToken: string) {
+  async refresh(refreshToken: string) {
     const payload = await this.jwtService.verifyAsync(refreshToken, {
       secret: process.env.JWT_REFRESH_SECRET,
     });
@@ -86,6 +86,7 @@ export class AuthService {
     const isValid = await this.isRefreshTokenValid(payload.sid, refreshToken);
     if (!isValid) throw new UnauthorizedException('Invalid refresh token');
 
+    const user: SafeUser = await this.userService.findUserByID(payload.sub) as SafeUser;
     return this.createTokens(user, payload.sid);
   }
 
