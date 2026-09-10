@@ -4,10 +4,8 @@ import {useState} from "react";
 import {Button} from "@/components/ui/button";
 import DrawIcon from "@/components/DrawIcon";
 import {SVG_PATHS} from "@/constants/svgPaths";
-import {z} from "zod";
 import {forgotPassword} from "@/lib/api/auth";
-
-const EmailSchema = z.email().trim();
+import {EmailSchema} from "@/types/userTypes";
 
 export default function Page() {
     const [email, setEmail] = useState<string>("");
@@ -22,7 +20,7 @@ export default function Page() {
             return
         }
 
-        const data = await forgotPassword(email);
+        const data = await forgotPassword(emailResult.data);
         data.message && setMessage(data.message)
         setError(null)
     }
