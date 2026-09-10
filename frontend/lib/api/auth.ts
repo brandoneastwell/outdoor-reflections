@@ -53,3 +53,23 @@ export async function me() {
     });
 }
 
+export async function forgotPassword(email: string) {
+    await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({email}),
+    })
+}
+
+export async function resetPassword(token: string, password: string) {
+    await fetch(`${API_URL}/auth/reset-password/${token}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({password}),
+    })
+}
+
