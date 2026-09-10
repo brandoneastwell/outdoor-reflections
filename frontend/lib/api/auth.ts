@@ -54,13 +54,16 @@ export async function me() {
 }
 
 export async function forgotPassword(email: string) {
-    await fetch(`${API_URL}/auth/forgot-password`, {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({email}),
     })
+
+    if (!res.ok) throw new Error(await readJsonError(res, "Unable to send reset password email"));
+    return (await res.json());
 }
 
 export async function resetPassword(token: string, password: string) {
