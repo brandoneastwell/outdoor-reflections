@@ -3,12 +3,8 @@ import type {User} from "@/types/userTypes";
 import type {Providers} from "@/types/authTypes";
 import {readJsonError} from "@/lib/api/readResponse";
 
-type AuthTokenResponse = {
-    access_token: string;
-    refresh_token: string;
-};
 
-export async function login(user: User): Promise<AuthTokenResponse> {
+export async function login(user: User) {
     const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
@@ -19,10 +15,10 @@ export async function login(user: User): Promise<AuthTokenResponse> {
     });
 
     if (!res.ok) throw new Error(await readJsonError(res, "Unable to sign in"));
-    return (await res.json()) as AuthTokenResponse;
+    return (await res.json());
 }
 
-export async function createAccount(user: User): Promise<AuthTokenResponse> {
+export async function createAccount(user: User) {
     const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
         headers: {
@@ -33,7 +29,7 @@ export async function createAccount(user: User): Promise<AuthTokenResponse> {
     });
 
     if (!res.ok) throw new Error(await readJsonError(res, "Unable to create account"));
-    return (await res.json()) as AuthTokenResponse;
+    return (await res.json());
 }
 
 export function loginWithProvider(provider: Providers): void {
