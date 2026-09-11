@@ -104,10 +104,10 @@ export class AuthService {
     const isValid = await this.isRefreshTokenValid(payload.sid, refreshToken);
     if (!isValid) throw new UnauthorizedException('Invalid refresh token');
 
-    const user: SafeUser = (await this.userService.findUserByID(
-      payload.sub,
-    )) as SafeUser;
-    return this.createTokens(user, payload.sid);
+    const user: SafeUser = await this.userService.findUserByID(payload.sub) as SafeUser;
+
+    const accessTokenPayload = { email: user.email, sub: user.id };
+    return { access_token: this.jwtService.sign(accessTokenPayload) }
   }
 
   async createTokens(user: SafeUser, refreshSessionId: string) {

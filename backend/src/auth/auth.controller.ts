@@ -16,7 +16,7 @@ import { JwtAuthGuard } from './jwt-auth-guard';
 import {CredentialsDto, EmailDto, ResetPasswordDto} from './auth.dto';
 import { SafeUser } from '../user/user.types';
 import { GoogleAuthGuard } from './google-auth-guard';
-import {setTokensInCookie} from "./helpers";
+import {setAuthTokenInCookies} from "./helpers";
 
 @Controller('auth')
 export class AuthController {
@@ -34,7 +34,7 @@ export class AuthController {
   async login(@Req() req: Request, @Res() res: Response) {
     const refreshToken: string = req.cookies['refresh_token'];
     const token = await this.authService.login(req.user as SafeUser, refreshToken);
-    setTokensInCookie(res, token)
+    setAuthTokenInCookies(res, token)
     return res.status(201).json({ message: 'Successfully logged in' });
   }
 
@@ -43,7 +43,7 @@ export class AuthController {
   async register(@Body() credentials: CredentialsDto, @Res() res: Response) {
     const user: SafeUser = await this.authService.register(credentials);
     const token = await this.authService.login(user)
-    setTokensInCookie(res, token)
+    setAuthTokenInCookies(res, token)
     return res.status(201).json({ message: 'Successfully registered' });
   }
 
@@ -68,10 +68,12 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(@Req() req: Request) {
+  async refresh(@Res() res: Response, @Req() req: Request) {
     const refreshToken: string = req.cookies['refresh_token'];
     if (!refreshToken) throw new UnauthorizedException('User is not signed in');
-    return this.authService.refresh(refreshToken);
+    const accessToken = await this.authService.refresh(refreshToken);
+    setAuthTokenInCookies(res, accessToken)
+    return res.status(201).json({ message: 'refreshed token' });
   }
 
   @Get('google')

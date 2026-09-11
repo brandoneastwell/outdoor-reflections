@@ -1,12 +1,12 @@
-export function setTokensInCookie(res: any, token: any) {
-    res.cookie('access_token', token.access_token, {
+export function setAuthTokenInCookies(res: any, token: { access_token?: string, refresh_token?: string}) {
+    token.access_token && res.cookie('access_token', token.access_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
     });
 
-    res.cookie('refresh_token', token.refresh_token, {
+    token.refresh_token && res.cookie('refresh_token', token.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
