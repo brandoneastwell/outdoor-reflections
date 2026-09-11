@@ -20,7 +20,7 @@ export default function Page() {
         const token = searchParams.get("token");
         if (!token) return setError("Invalid token");
         setToken(token)
-        window.history.replaceState({}, '', '/reset-password');
+        window.history.replaceState({}, '', '/auth/reset-password');
     }, [searchParams])
 
     const handleReset = async () => {
@@ -38,9 +38,14 @@ export default function Page() {
             return
         }
 
-        const data = await resetPassword(token, password.data);
-        data.message && setMessage(data.message)
-        setError(null)
+        try {
+            const data = await resetPassword(token, password.data);
+            data.message && setMessage(data.message)
+            setError(null)
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Unable to reset password");
+            return
+        }
     }
 
     return (
@@ -51,10 +56,10 @@ export default function Page() {
                     outdoor reflections
                 </span>
             </div>
-            <div className="w-full max-w-md aspect-square bg-rose/10 rounded-lg p-12 flex flex-col gap-4 items-center justify-center">
+            <div className="aspect-square bg-rose/10 rounded-lg p-12 flex flex-col gap-4 items-center justify-center">
                 <h1 className="text-3xl font-semibold">Change your password</h1>
                 <p className="mb-4">Enter your new password below to change your password.</p>
-                <label className="grid gap-2">
+                <label className="w-full grid gap-2">
                     <span className="text-sm font-medium text-blue-slate">New password</span>
                     <input
                         value={firstPassword}
@@ -66,7 +71,7 @@ export default function Page() {
                         className="h-12 rounded-2xl border border-border bg-white/90 px-4 text-sm text-blue-slate outline-none transition-shadow placeholder:text-blue-slate/35 focus:border-rose/40 focus:shadow-[0_0_0_3px_rgba(206,121,107,0.12)]"
                     />
                 </label>
-                <label className="grid gap-2">
+                <label className="w-full grid gap-2">
                     <span className="text-sm font-medium text-blue-slate">Re-enter new password</span>
                     <input
                         value={secondPassword}
@@ -81,7 +86,7 @@ export default function Page() {
                 <Button onClick={handleReset} className="w-full h-12 rounded-2xl bg-rose text-background hover:bg-rose/90">Reset password</Button>
                 {error && !message && <p className="text-sm text-destructive place-self-center">{error}</p>}
                 {message && <p className="text-sm text-green-600 text-center">{message}</p>}
-                <a href="/auth" className="text-rose underline">Back to Login</a>
+                <a href="/auth" className="mt-2 text-sm text-rose">Back to Login</a>
             </div>
         </div>
     )

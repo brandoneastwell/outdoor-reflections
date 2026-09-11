@@ -10,17 +10,13 @@ export async function syncPendingEntries(): Promise<SyncResponse | undefined> {
 
     const entriesToSync = entries.map(entry => entry.sync_status = "pending")
 
-    try {
-        const res = await fetch(`${API_URL}/reflection/sync`, {
-            method: "POST",
-            body: JSON.stringify(entriesToSync)
-        })
+    const res = await fetch(`${API_URL}/reflection/sync`, {
+        method: "POST",
+        body: JSON.stringify(entriesToSync)
+    })
 
-        if (!res.ok) throw new Error("Failed to sync entries")
-        const results: SyncResponse = await res.json()
-        console.log(results)
-        return results
-    } catch (error) {
-        console.error(error)
-    }
+    if (!res.ok) throw new Error("Failed to sync entries")
+    const results: SyncResponse = await res.json()
+    console.log(results)
+    return results
 }
