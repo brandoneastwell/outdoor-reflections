@@ -14,7 +14,7 @@ import {
 import type { Request, Response } from 'express';
 import { LocalAuthGuard } from './local-auth-guard';
 import { JwtAuthGuard } from './jwt-auth-guard';
-import {CredentialsDto, EmailDto, PasswordDto, ResetPasswordDto} from './auth.dto';
+import {CredentialsDto, EmailDto, ResetPasswordDto} from './auth.dto';
 import { SafeUser } from '../user/user.types';
 import { GoogleAuthGuard } from './google-auth-guard';
 import {setTokensInCookie} from "./helpers";
@@ -98,6 +98,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @HttpCode(HttpStatus.CREATED)
   async resetPassword(@Body() body: ResetPasswordDto) {
     return await this.authService.resetPassword(body.token, body.password)
   }

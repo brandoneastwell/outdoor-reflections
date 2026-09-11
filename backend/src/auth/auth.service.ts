@@ -122,7 +122,10 @@ export class AuthService {
     const user = await this.userService.findUserByEmail(email);
     if (!user) throw new NotFoundException('User not found');
 
-    const token = await this.jwtService.signAsync({ email },
+    const resetSecret = this.configService.get('JWT_SECRET') + user.password;
+    console.log(resetSecret)
+
+    const token = await this.jwtService.signAsync({ sub: user.id },
       {
         secret: this.configService.get('JWT_SECRET') + user.password,
         expiresIn: '15m',
@@ -133,19 +136,24 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const decoded = this.jwtService.decode(token) as { email: string }
-    if (!decoded) throw new BadRequestException('Invalid token')
+    const decoded = this.jwtService.decode(token) as { sub: number }
+    if (!decoded?.sub) throw new UnauthorizedException('Invalid reset token')
 
-    const user = await this.userService.findUserByEmail(decoded.email)
-    if (!user) throw new BadRequestException('User does not exist')
-    const secret = this.configService.get('JWT_SECRET') + user.password
+    const user = await this.userService.findUserByID(decoded.sub)
+    if (!user) throw new UnauthorizedException('Invalid reset token')
+
+    console.log(token)
+    const resetSecret = this.configService.get('JWT_SECRET') + user.password;
+    console.log(resetSecret)
 
     try {
-      this.jwtService.verify(token, { secret })
-      const hashedPassword = await bcrypt.hash(newPassword, 10)
-      await this.userService.updatePassword(user.id, hashedPassword)
-    } catch (error) {
-      throw new BadRequestException('Token invalid or has expired')
+      await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get('JWT_SECRET') + user.password,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired reset token');
     }
+
+    return await this.userService.updatePassword(user.id, newPassword)
   }
 }
