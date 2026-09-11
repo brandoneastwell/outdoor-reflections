@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   Logger, NotFoundException,
@@ -44,11 +43,17 @@ export class AuthService {
     return this.userService.createUser(credentials.email, credentials.password);
   }
 
-  async login(user: SafeUser) {
+  async login(user: SafeUser, refreshToken?: string) {
     this.logger.log(`User ${user.email} attempting login`);
-    const exists = await this.authRepository.findRefreshTokenByUser(user.id);
-    if (exists)
-      throw new ConflictException('User already signed in on this device');
+
+    if (refreshToken) {
+      const decode = this.jwtService.decode(refreshToken) as { sid: string }
+      const refreshSession = await this.authRepository.findRefreshToken(decode.sid);
+      if (refreshSession) {
+        const expired = (refreshSession.createdAt.getDate() + REFRESH_TOKEN_AGE_DAYS) > new Date().getDate();
+        if (!expired) throw new ConflictException('You are already signed in on this device');
+      }
+    }
 
     const session: RefreshToken =
       await this.authRepository.createRefreshSession({
@@ -112,7 +117,7 @@ export class AuthService {
     return {
       refresh_token: await this.jwtService.signAsync(refreshPayload, {
         expiresIn: `${REFRESH_TOKEN_AGE_DAYS}d`,
-        secret: process.env.JWT_REFRESH_SECRET,
+        secret: this.configService.get('JWT_SECRET_REFRESH'),
       }),
       access_token: await this.jwtService.signAsync(payload),
     };

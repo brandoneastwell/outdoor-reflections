@@ -5,8 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus, NotFoundException,
-  Post, Query,
-  Req,
+  Post, Req,
   Res,
   UnauthorizedException,
   UseGuards,
@@ -33,9 +32,10 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {
-    const token = await this.authService.login(req.user as SafeUser);
+    const refreshToken: string = req.cookies['refresh_token'];
+    const token = await this.authService.login(req.user as SafeUser, refreshToken);
     setTokensInCookie(res, token)
-    return res.status(201).end();
+    return res.status(201).json({ message: 'Successfully logged in' });
   }
 
   @Post('register')
@@ -44,7 +44,7 @@ export class AuthController {
     const user: SafeUser = await this.authService.register(credentials);
     const token = await this.authService.login(user)
     setTokensInCookie(res, token)
-    return res.status(201).end();
+    return res.status(201).json({ message: 'Successfully registered' });
   }
 
   @UseGuards(JwtAuthGuard)
