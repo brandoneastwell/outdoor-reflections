@@ -21,6 +21,7 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
+    const [message, setMessage] = useState<string | null>(null);
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -37,8 +38,10 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
         const user: User = result.data;
 
         try {
-            if (isSigningIn) await login(user);
-            else await createAccount(user);
+            let res;
+            if (isSigningIn) res = await login(user);
+            else res = await createAccount(user);
+            if (res.message) setMessage(res.message)
             await syncPendingEntries();
             router.push("/entries");
         } catch (error) {
@@ -82,7 +85,8 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
                 />
             </label>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && !message && <p className="text-sm text-destructive">{error}</p>}
+            {message && <p className="text-sm text-green-600">{message}</p>}
 
             <div className="flex items-center justify-between gap-4">
                 <label className="flex items-center gap-2 text-sm text-blue-slate/80">
