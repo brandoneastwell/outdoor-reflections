@@ -64,7 +64,7 @@ export class AuthService {
         tokenHash: null,
       });
 
-    return this.createTokens(user, session.id);
+    return { token: await this.createTokens(user, session.id), userId: user.id }
   }
 
   async loginWithGoogle(req) {

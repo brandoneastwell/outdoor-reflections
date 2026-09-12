@@ -33,18 +33,18 @@ export class AuthController {
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {
     const refreshToken: string = req.cookies['refresh_token'];
-    const token = await this.authService.login(req.user as SafeUser, refreshToken);
-    setAuthTokenInCookies(res, token)
-    return res.status(201).json({ message: 'Successfully logged in' });
+    const authenticated = await this.authService.login(req.user as SafeUser, refreshToken);
+    setAuthTokenInCookies(res, authenticated.token)
+    return res.status(201).json({ message: 'Successfully logged in', id: authenticated.userId });
   }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() credentials: CredentialsDto, @Res() res: Response) {
     const user: SafeUser = await this.authService.register(credentials);
-    const token = await this.authService.login(user)
-    setAuthTokenInCookies(res, token)
-    return res.status(201).json({ message: 'Successfully registered' });
+    const authenticated = await this.authService.login(user)
+    setAuthTokenInCookies(res, authenticated.token)
+    return res.status(201).json({ message: 'Successfully registered', id: authenticated.userId });
   }
 
   @UseGuards(JwtAuthGuard)
