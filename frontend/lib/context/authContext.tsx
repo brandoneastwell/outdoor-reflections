@@ -14,6 +14,7 @@ type AuthContextType = {
     login: (credentials: User) => any;
     refresh: () => any;
     loginWithProvider: (provider: Providers) => void;
+    createAccount: (user: User) => any;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!res.ok) throw new Error(await readJsonError(res, "Unable to sign in"));
         const data = await res.json();
         setUserId(data.id);
+        return data;
     }
 
     async function logout() {
@@ -96,8 +98,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.href = `${API_URL}/auth/${provider}`;
     }
 
+    async function createAccount(user: User) {
+        const res = await fetch(`${API_URL}/auth/register`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(user),
+        });
+
+        if (!res.ok) throw new Error(await readJsonError(res, "Unable to create account"));
+        const data = await res.json();
+        setUserId(data.id);
+        return data;
+    }
+
     return (
-        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh, loginWithProvider }}>
+        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh, loginWithProvider, createAccount }}>
             {children}
         </AuthContext.Provider>
     );

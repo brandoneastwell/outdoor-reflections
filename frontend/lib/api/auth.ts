@@ -3,21 +3,6 @@ import type {User} from "@/types/userTypes";
 import type {Providers} from "@/types/authTypes";
 import {readJsonError} from "@/lib/api/readResponse";
 
-
-export async function createAccount(user: User) {
-    const res = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(user),
-    });
-
-    if (!res.ok) throw new Error(await readJsonError(res, "Unable to create account"));
-    return (await res.json());
-}
-
 export async function forgotPassword(email: string) {
     const res = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",
