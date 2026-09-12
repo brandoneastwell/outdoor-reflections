@@ -20,13 +20,10 @@ export default function Entries() {
             try {
                 const storedEntries = (await db.getAll('reflections')) ?? [];
                 const normalizedEntries = storedEntries.map(normalizeEntry);
-                console.log(normalizedEntries)
 
                 const filteredEntries = !userId
                     ? normalizedEntries.filter((entry) => entry.user_id === undefined)
                     : normalizedEntries.filter((entry) => entry.user_id === userId);
-
-                console.log(filteredEntries)
 
                 sortEntriesByLastUpdated(filteredEntries)
                 setEntries(filteredEntries);

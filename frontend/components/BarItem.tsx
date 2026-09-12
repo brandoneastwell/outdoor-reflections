@@ -2,12 +2,11 @@
 
 import DrawIcon from "@/components/DrawIcon";
 import {AnimatePresence, motion} from "motion/react";
-import {JSX} from "react";
 
 interface SidebarItemProps {
     svgPaths: string[];
     dropDown?: boolean;
-    dropDownItems?: { text: string, onClick: () => {} }[];
+    dropDownItems?: { text: string, onClick: () => void | Promise<void> }[];
     dropDownOpen?: boolean;
     label: string;
     onClick?: () => void;
@@ -34,10 +33,14 @@ export default function BarItem({
             <DrawIcon fill={fill} svgPaths={svgPaths} strokeWidth={strokeWidth} iconSize={iconSize} />
             <AnimatePresence>
                 {dropDown && dropDownOpen && dropDownItems &&
-                        <motion.div initial={{ opacity: 0, top: 50 }} animate={{ opacity: 1, top: 60 }} exit={{ opacity: 0, top: 50 }}
-                                    className="absolute z-50 aspect-square flex-col items-start justify-start text-nowrap rounded-xl p-1 text-sm font-mono transition-colors bg-rose/35">
+                        <motion.div
+                            initial={{ opacity: 0, top: 50 }}
+                            animate={{ opacity: 1, top: 60 }}
+                            exit={{ opacity: 0, top: 50 }}
+                            className="dropdown absolute z-50 min-w-28 overflow-hidden text-nowrap rounded-xl text-sm font-mono border border-white/40 bg-rose/35 p-1 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10"
+                        >
                             { dropDownItems.map((item, index) => (
-                                <div className="rounded-lg p-1 cursor-pointer hover:bg-white/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/30" onClick={item.onClick} key={index + item.text}>{item.text}</div>
+                                <div className="dropdown-item rounded-lg p-1 cursor-pointer hover:bg-white/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/30" onClick={item.onClick} key={index + item.text}>{item.text}</div>
                             )) }
                         </motion.div>
                 }
