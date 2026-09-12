@@ -2,13 +2,16 @@
 
 import {createContext, ReactNode, useEffect, useState} from "react";
 import {API_URL} from "@/constants/apiUrl";
-import {refresh} from "@/lib/api/auth";
 import {useRouter} from "next/navigation";
+import {readJsonError} from "@/lib/api/readResponse";
+import {User} from "@/types/userTypes";
 
 type AuthContextType = {
     userId: number | null;
     setUserId: (userId: number | null) => void;
     logout: () => void;
+    login: (credentials: User) => any;
+    refresh: () => any;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,6 +56,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     }, []);
 
+    async function refresh() {
+        return fetch(`${API_URL}/auth/refresh`, {
+            method: "POST",
+            credentials: "include",
+        });
+    }
+
+    async function login(credentials: User) {
+        const res = await fetch(`${API_URL}/auth/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(credentials),
+        });
+
+        if (!res.ok) throw new Error(await readJsonError(res, "Unable to sign in"));
+        const data = await res.json();
+        setUserId(data.id);
+    }
+
     async function logout() {
         await fetch(`${API_URL}/auth/logout`, {
             method: "POST",
@@ -64,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return (
-        <AuthContext.Provider value={{ userId, setUserId, logout }}>
+        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh }}>
             {children}
         </AuthContext.Provider>
     );

@@ -4,20 +4,6 @@ import type {Providers} from "@/types/authTypes";
 import {readJsonError} from "@/lib/api/readResponse";
 
 
-export async function login(user: User) {
-    const res = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(user),
-    });
-
-    if (!res.ok) throw new Error(await readJsonError(res, "Unable to sign in"));
-    return (await res.json());
-}
-
 export async function createAccount(user: User) {
     const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
@@ -34,13 +20,6 @@ export async function createAccount(user: User) {
 
 export function loginWithProvider(provider: Providers): void {
     window.location.href = `${API_URL}/auth/${provider}`;
-}
-
-export function refresh() {
-    return fetch(`${API_URL}/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-    });
 }
 
 export async function me() {

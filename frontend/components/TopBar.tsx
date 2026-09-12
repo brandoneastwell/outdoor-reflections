@@ -1,7 +1,7 @@
 "use client"
 
 import { SVG_PATHS } from "@/constants/svgPaths";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import BarItem from "@/components/BarItem";
 import {createEmptyEntry, isEntryEmpty} from "@/utils/entryUtils";
 import {usePathname, useRouter} from "next/navigation";
@@ -13,8 +13,17 @@ export default function TopBar() {
     const pathname = usePathname();
     const router = useRouter();
 
+    useEffect(() => {
+        document.addEventListener("click", (e) => {
+            if (e.target instanceof HTMLElement) {
+                if (e.target.closest(".dropdown") || e.target.closest(".dropdown-item")) return;
+                setProfileDropdownOpen(false);
+            }
+        })
+    }, []);
+    
     const profileOnClick = () => {
-        if (profileDropdownOpen) setProfileDropdownOpen(false);
+        if (profileDropdownOpen) return setProfileDropdownOpen(false);
         if (user.userId) setProfileDropdownOpen(true);
         else router.push("/auth");
     }

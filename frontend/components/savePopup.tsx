@@ -13,7 +13,7 @@ export default function SavePopup() {
     const [localEntries, setLocalEntries] = useState<Entry[]>([]);
     const [dismissed, setDismissed] = useState(false);
     const [saving, setSaving] = useState(false);
-    const {userId} = useAuth();
+    const { userId } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
@@ -51,7 +51,7 @@ export default function SavePopup() {
             );
 
             setLocalEntries([]);
-            router.refresh();
+            router.push("/entries");
         } finally {
             setSaving(false);
         }

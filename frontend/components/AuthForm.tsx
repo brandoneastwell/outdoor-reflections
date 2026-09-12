@@ -4,11 +4,12 @@ import DrawIcon from "@/components/DrawIcon";
 import {SVG_PATHS} from "@/constants/svgPaths";
 import {useState} from "react";
 import {User, UserSchema} from "@/types/userTypes";
-import {createAccount, login, loginWithProvider} from "@/lib/api/auth";
+import {createAccount, loginWithProvider} from "@/lib/api/auth";
 import {Providers} from "@/types/authTypes";
 import {useRouter} from "next/navigation";
 import {syncPendingEntries} from "@/lib/api/reflections";
 import Link from "next/link";
+import {useAuth} from "@/lib/context/auth";
 
 
 type AuthFormProps = {
@@ -23,6 +24,8 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const router = useRouter();
+    const user = useAuth()
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,12 +38,12 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
             return setError(result.error.issues[0].message);
         }
 
-        const user: User = result.data;
+        const credentials: User = result.data;
 
         try {
             let res;
-            if (isSigningIn) res = await login(user);
-            else res = await createAccount(user);
+            if (isSigningIn) res = await user.login(credentials);
+            else res = await createAccount(credentials);
             if (res.message) setMessage(res.message)
             await syncPendingEntries();
         } catch (error) {
