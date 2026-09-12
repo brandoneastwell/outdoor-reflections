@@ -4,7 +4,6 @@ import DrawIcon from "@/components/DrawIcon";
 import {SVG_PATHS} from "@/constants/svgPaths";
 import {useState} from "react";
 import {User, UserSchema} from "@/types/userTypes";
-import {createAccount} from "@/lib/api/auth";
 import {Providers} from "@/types/authTypes";
 import {useRouter} from "next/navigation";
 import {syncPendingEntries} from "@/lib/api/reflections";
@@ -43,7 +42,7 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
         try {
             let res;
             if (isSigningIn) res = await user.login(credentials);
-            else res = await createAccount(credentials);
+            else res = await user.createAccount(credentials);
             if (res.message) setMessage(res.message)
             await syncPendingEntries();
         } catch (error) {

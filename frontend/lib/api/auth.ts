@@ -1,6 +1,4 @@
 import {API_URL} from "@/constants/apiUrl";
-import type {User} from "@/types/userTypes";
-import type {Providers} from "@/types/authTypes";
 import {readJsonError} from "@/lib/api/readResponse";
 
 export async function forgotPassword(email: string) {
