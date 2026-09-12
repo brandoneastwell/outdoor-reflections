@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
 
                 const user: { id: number, email: string } = await res.json();
-                console.log(user)
                 setUserId(user.id);
             } catch(error) {
                 setUserId(null);

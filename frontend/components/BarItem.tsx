@@ -7,7 +7,7 @@ import {JSX} from "react";
 interface SidebarItemProps {
     svgPaths: string[];
     dropDown?: boolean;
-    dropDownItems?: JSX.Element[];
+    dropDownItems?: { text: string, onClick: () => {} }[];
     dropDownOpen?: boolean;
     label: string;
     onClick?: () => void;
@@ -33,9 +33,9 @@ export default function BarItem({
         <motion.div aria-label={label} className={className} onClick={onClick} animate={{}}>
             <DrawIcon fill={fill} svgPaths={svgPaths} strokeWidth={strokeWidth} iconSize={iconSize} />
             {dropDown && dropDownOpen && dropDownItems &&
-                <motion.div className="flex aspect-square cursor-pointer flex-col items-start justify-start text-nowrap rounded-xl py-1 font-mono transition-colors hover:bg-white/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/30">
-                    { dropDownItems.map((item) => (
-                        item
+                <motion.div className="absolute top-15 aspect-square flex-col items-start justify-start text-nowrap rounded-xl p-1 text-sm font-mono transition-colors bg-rose/35">
+                    { dropDownItems.map((item, index) => (
+                        <div className="rounded-lg p-1 cursor-pointer hover:bg-white/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/30" onClick={item.onClick} key={index + item.text}>{item.text}</div>
                     )) }
                 </motion.div>
             }

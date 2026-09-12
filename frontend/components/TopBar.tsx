@@ -14,7 +14,7 @@ export default function TopBar() {
     const router = useRouter();
 
     const profileOnClick = () => {
-        console.log(user)
+        if (profileDropdownOpen) setProfileDropdownOpen(false);
         if (user.userId) setProfileDropdownOpen(true);
         else router.push("/auth");
     }
@@ -38,7 +38,9 @@ export default function TopBar() {
                 <BarItem
                     dropDownOpen={profileDropdownOpen}
                     dropDown={true}
-                    dropDownItems={[<span>logout</span>]}
+                    dropDownItems={[
+                        { onClick: async () => user.logout(), text: "logout" }
+                    ]}
                     svgPaths={SVG_PATHS.userIcon}
                     label="Login"
                     onClick={profileOnClick}
