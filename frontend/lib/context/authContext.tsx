@@ -3,6 +3,7 @@
 import {createContext, ReactNode, useEffect, useState} from "react";
 import {API_URL} from "@/constants/apiUrl";
 import {refresh} from "@/lib/api/auth";
+import {useRouter} from "next/navigation";
 
 type AuthContextType = {
     userId: number | null;
@@ -14,6 +15,7 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [userId, setUserId] = useState<number | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
         async function loadUser() {
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         setUserId(null);
+        router.push("/auth");
     }
 
     return (

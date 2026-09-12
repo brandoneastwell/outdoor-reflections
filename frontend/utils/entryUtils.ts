@@ -1,5 +1,6 @@
 import {Entry} from "@/types/entryTypes";
 import Database from "@/lib/database";
+import {useAuth} from "@/lib/context/auth";
 const db = new Database();
 
 export function normalizeEntryContent(content: string | string[] | undefined) {
@@ -32,9 +33,11 @@ export async function isEntryEmpty(id: string) {
 
 export async function createEmptyEntry() {
     const curDate = new Date().toISOString();
+    const user = useAuth()
 
     const initEntry: Entry = {
         id: crypto.randomUUID(),
+        user_id: user.userId ? user.userId : undefined,
         created_at: curDate,
         last_edited_at: curDate,
         sync_status: "pending",

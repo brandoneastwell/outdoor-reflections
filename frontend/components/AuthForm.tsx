@@ -43,12 +43,12 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
             else res = await createAccount(user);
             if (res.message) setMessage(res.message)
             await syncPendingEntries();
-            router.push("/entries");
         } catch (error) {
             if (error instanceof Error && error.message === "Failed to sync entries")
                 console.error(error);
             else setError(error instanceof Error ? error.message : "Unable to sign in");
         } finally {
+            router.push("/entries");
             setIsSubmitting(false);
         }
     }
@@ -107,7 +107,7 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
                 <DrawIcon fill={"white"} svgPaths={SVG_PATHS.signInIcon} />
             </Button>
 
-            <Button onClick={() => handleContinueWithProvider("google")} type="button" variant="outline" className="h-12 rounded-2xl border-white/70 bg-white/70">
+            <Button onClick={() => handleContinueWithProvider("google")} type="button" variant="outline" className="h-12 rounded-2xl border-white/70 bg-white/70 cursor-pointer">
                 continue with google
             </Button>
 

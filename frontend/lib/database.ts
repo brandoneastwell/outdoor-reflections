@@ -52,16 +52,22 @@ export default class Database {
         });
     }
 
-    async saveToLocalDB(obj: DBTypes, name: DBNames) {
+    async saveToLocalDB(obj: DBTypes, name: DBNames): Promise<IDBValidKey | undefined> {
         try {
             const db = await this.openDB(name);
-            const transaction = db.transaction(name, "readwrite");
-            const store = transaction.objectStore(name);
-            const res = store.put(obj);
-            return res.onsuccess = () => {
-                console.log(`Entry id=${res.result} saved to offline database`);
-                return res.result
-            }
+            return await new Promise((resolve, reject) => {
+                const transaction = db.transaction(name, "readwrite");
+                const store = transaction.objectStore(name);
+                const request = store.put(obj);
+
+                request.onsuccess = () => {
+                    console.log(`Entry id=${request.result} saved to offline database`);
+                    resolve(request.result);
+                };
+
+                request.onerror = () => reject(request.error);
+                transaction.onerror = () => reject(transaction.error);
+            });
         } catch (error) {
             console.error("Error saving entry to offline database:", error);
         }
