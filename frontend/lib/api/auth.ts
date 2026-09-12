@@ -18,16 +18,6 @@ export async function createAccount(user: User) {
     return (await res.json());
 }
 
-export function loginWithProvider(provider: Providers): void {
-    window.location.href = `${API_URL}/auth/${provider}`;
-}
-
-export async function me() {
-    return await fetch(`${API_URL}/auth/me`, {
-        credentials: "include",
-    });
-}
-
 export async function forgotPassword(email: string) {
     const res = await fetch(`${API_URL}/auth/forgot-password`, {
         method: "POST",

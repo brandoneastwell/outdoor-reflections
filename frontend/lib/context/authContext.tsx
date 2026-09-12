@@ -5,6 +5,7 @@ import {API_URL} from "@/constants/apiUrl";
 import {useRouter} from "next/navigation";
 import {readJsonError} from "@/lib/api/readResponse";
 import {User} from "@/types/userTypes";
+import type {Providers} from "@/types/authTypes";
 
 type AuthContextType = {
     userId: number | null;
@@ -12,6 +13,7 @@ type AuthContextType = {
     logout: () => void;
     login: (credentials: User) => any;
     refresh: () => any;
+    loginWithProvider: (provider: Providers) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,9 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         async function loadUser() {
             try {
-                let res = await fetch(`${API_URL}/auth/me`, {
-                    credentials: "include",
-                });
+                let res = await me()
 
                 if (res.status === 401) {
                     const refreshRes = await refresh();
@@ -35,9 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     }
 
                     // Retry the original request after refreshing
-                    res = await fetch(`${API_URL}/auth/me`, {
-                        credentials: "include",
-                    });
+                    res = await me()
                 }
 
                 if (!res.ok) {
@@ -55,6 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loadUser();
 
     }, []);
+
+    async function me() {
+        return await fetch(`${API_URL}/auth/me`, {
+            credentials: "include",
+        });
+    }
 
     async function refresh() {
         return fetch(`${API_URL}/auth/refresh`, {
@@ -88,8 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push("/auth");
     }
 
+    async function loginWithProvider(provider: Providers) {
+        window.location.href = `${API_URL}/auth/${provider}`;
+    }
+
     return (
-        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh }}>
+        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh, loginWithProvider }}>
             {children}
         </AuthContext.Provider>
     );
