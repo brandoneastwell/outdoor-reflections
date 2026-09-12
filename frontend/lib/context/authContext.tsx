@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     return;
                 }
 
-                const user = await res.json();
+                const user: { id: number, email: string } = await res.json();
                 console.log(user)
                 setUserId(user.id);
             } catch(error) {
