@@ -6,7 +6,7 @@ import {useRouter} from "next/navigation";
 import {readJsonError} from "@/lib/api/readResponse";
 import {User} from "@/types/userTypes";
 import type {Providers} from "@/types/authTypes";
-import {SyncResponse} from "@/types/entryTypes";
+import {Entry, SyncResponse} from "@/types/entryTypes";
 import Database from "@/lib/database";
 
 type AuthContextType = {
@@ -142,7 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             throw new Error("Failed to sync entries")
         }
+
         const results: SyncResponse = await res.json()
+        const synced = results.synced_entries.map(entry => { return {...entry, syncStatus: "synced"} })
+        synced.forEach(entry => {
+            db.saveToLocalDB(entry as Entry, "reflections")
+        })
+
         console.log(results)
         return results
     }
