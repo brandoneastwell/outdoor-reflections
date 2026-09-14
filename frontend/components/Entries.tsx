@@ -60,7 +60,6 @@ export default function Entries() {
 
     return (
         <div>
-            { loading && <p>Loading...</p> }
             { !loading && entries.length === 0 && (
                 <div className="mx-auto mt-4 flex min-h-[45vh] w-full max-w-lg flex-col items-center justify-center rounded-2xl border border-white/60 bg-white/70 px-6 py-10 text-center font-mono text-blue-slate shadow-[0_10px_35px_rgba(73,88,103,0.12)]">
                     <div className="mb-5 flex size-20 items-center justify-center">

@@ -2,14 +2,22 @@
 import {useEffect} from "react";
 import {syncPendingEntries} from "@/lib/api/reflections";
 
+async function syncEntries() {
+    try {
+        await syncPendingEntries();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 export default function SyncManager() {
 
     useEffect(() => {
-        window.addEventListener("online", syncPendingEntries);
-        window.addEventListener("offline", syncPendingEntries);
+        window.addEventListener("online", syncEntries);
+        window.addEventListener("offline", syncEntries);
         return () => {
-            window.removeEventListener("online", syncPendingEntries);
-            window.removeEventListener("offline", syncPendingEntries);
+            window.removeEventListener("online", syncEntries);
+            window.removeEventListener("offline", syncEntries);
         };
     }, []);
 

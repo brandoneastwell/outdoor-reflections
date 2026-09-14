@@ -11,6 +11,7 @@ export async function syncPendingEntries(): Promise<SyncResponse | undefined> {
     const entriesToSync = entries.map(entry => entry.sync_status = "pending")
 
     const res = await fetch(`${API_URL}/reflection/sync`, {
+        credentials: "include",
         method: "POST",
         body: JSON.stringify(entriesToSync)
     })
