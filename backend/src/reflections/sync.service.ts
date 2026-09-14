@@ -9,7 +9,7 @@ export class SyncService {
   private readonly logger = new Logger(SyncService.name);
 
   async syncEntries(entries: ReflectionDto[], user: SafeUser) {
-    if (entries.length === 0) throw new Error('No entries provided to sync');
+    if (!entries || entries.length === 0) throw new Error('No entries provided to sync');
     this.logger.log(`Syncing ${entries.length} entries`);
 
     const start = process.hrtime();

@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConsoleLogger } from '@nestjs/common';
 import { ZodValidationPipe } from 'nestjs-zod';
 import cookieParser from 'cookie-parser';
+import {json} from "express";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -12,6 +13,7 @@ async function bootstrap() {
     }),
   });
 
+  app.use(json({ limit: '10mb' }));
   app.enableCors({ origin: process.env.ORIGIN, credentials: true });
   app.use(cookieParser());
   app.useGlobalPipes(new ZodValidationPipe());

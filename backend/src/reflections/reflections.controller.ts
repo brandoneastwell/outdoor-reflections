@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Param,
@@ -26,9 +27,9 @@ export class ReflectionsController {
   @UseGuards(JwtAuthGuard)
   @Post()
   async create(@Req() req: Request, @Res() res: Response) {
-    const { userId, entry }: { userId: number; entry: ReflectionDto } =
-      req.body;
-    return this.reflectionService.createEntry(entry, userId);
+    const entry: ReflectionDto = req.body;
+    const user: SafeUser = req.user as SafeUser;
+    return this.reflectionService.createEntry(entry, user.id);
   }
 
   @Get(':id')
@@ -39,9 +40,8 @@ export class ReflectionsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('sync')
-  async sync(@Req() req: Request, @Res() res: Response) {
-    const { user, entries }: { user: SafeUser; entries: ReflectionDto[] } =
-      req.body;
+  async sync(@Req() req: Request, @Body() entries: ReflectionDto[]) {
+    const user: SafeUser = req.user as SafeUser;
     return this.syncService.syncEntries(entries, user);
   }
 

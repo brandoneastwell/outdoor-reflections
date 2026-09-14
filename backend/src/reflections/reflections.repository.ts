@@ -62,11 +62,13 @@ export class ReflectionsRepository {
     await this.prisma.$transaction(async (tx) => {
       for (const entry of reflectionEntries) {
         const validation = ReflectionSchema.safeParse(entry);
-        !validation.success &&
+        if (!validation.success) {
           results.entriesFailed.push({
             entryId: entry.id,
             error: validation.error.message,
           });
+          continue
+        }
 
         const existing = await tx.reflection.findUnique({
           where: { id: entry.id },
@@ -99,6 +101,7 @@ export class ReflectionsRepository {
                 entryId: entry.id,
                 error: error.message,
               });
+              continue;
             }
           }
         }
