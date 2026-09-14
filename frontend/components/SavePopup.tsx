@@ -25,7 +25,7 @@ export default function SavePopup() {
             const storedEntries = (await db.getAll("reflections")) ?? [];
             const entriesOnDevice = storedEntries
                 .map(normalizeEntry)
-                .filter((entry) => entry.user_id === undefined);
+                .filter((entry) => entry.userId === undefined);
 
             setLocalEntries(entriesOnDevice);
         }
@@ -43,9 +43,8 @@ export default function SavePopup() {
                     db.saveToLocalDB(
                         {
                             ...entry,
-                            user_id: userId,
-                            sync_status: "pending",
-                            updated_at: new Date().toISOString(),
+                            userId: userId,
+                            syncStatus: "pending",
                         },
                         "reflections"
                     )

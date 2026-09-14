@@ -15,10 +15,10 @@ export const EntryContext = createContext<EntryContextValue>({
         title: "",
         content: [],
         date: "",
-        drawings: [],
-        sync_status: "pending",
+        drawingPaths: [],
+        syncStatus: "pending",
         last_synced_at: null,
-        created_at: "",
+        createdAt: "",
         updated_at: "",
         id: ""
     },

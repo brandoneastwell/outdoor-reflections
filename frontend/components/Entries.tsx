@@ -3,12 +3,13 @@ import Database from "@/lib/database";
 import {Entry} from "@/types/entryTypes";
 import {useAuth} from "@/lib/context/auth";
 import {useEffect, useState} from "react";
-import {normalizeEntry, sortEntriesByLastUpdated} from "@/utils/entryUtils";
+import {createEmptyEntry, normalizeEntry, sortEntriesByLastUpdated} from "@/utils/entryUtils";
 import {useRouter} from "next/navigation";
 import DrawIcon from "@/components/DrawIcon";
 import {SVG_PATHS} from "@/constants/svgPaths";
 
 const db = new Database();
+
 export default function Entries() {
     const [entries, setEntries] = useState<Entry[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -22,11 +23,13 @@ export default function Entries() {
                 const normalizedEntries = storedEntries.map(normalizeEntry);
 
                 const filteredEntries = !userId
-                    ? normalizedEntries.filter((entry) => entry.user_id === undefined)
-                    : normalizedEntries.filter((entry) => entry.user_id === userId);
+                    ? normalizedEntries.filter((entry) => entry.userId === undefined)
+                    : normalizedEntries.filter((entry) => entry.userId === userId);
 
                 sortEntriesByLastUpdated(filteredEntries)
                 setEntries(filteredEntries);
+            } catch (error) {
+                console.error("Failed loading IndexedDB entries:", error);
             } finally {
                 setLoading(false);
             }
@@ -40,21 +43,7 @@ export default function Entries() {
     }
 
     async function createFirstEntry() {
-        const curDate = new Date().toISOString();
-        const entry: Entry = {
-            id: crypto.randomUUID(),
-            user_id: userId ? userId : undefined,
-            created_at: curDate,
-            last_edited_at: curDate,
-            sync_status: "pending",
-            updated_at: curDate,
-            title: "",
-            content: [""],
-            date: curDate,
-            drawings: []
-        };
-
-        await db.saveToLocalDB(entry, "reflections");
+        const entry = await createEmptyEntry(userId)
         router.push(`/entry/${entry.id}`);
     }
 
@@ -90,7 +79,7 @@ export default function Entries() {
                                 <p key={index} className="text-xs">{paragraph}</p>
                             )}
                             <svg viewBox="0 0 320 920">
-                                {entry.drawings.map((drawPath, index) => (
+                                {entry.drawingPaths.map((drawPath, index) => (
                                     <path key={index} d={drawPath.path} fill={drawPath.color} />
                                 ))}
                             </svg>

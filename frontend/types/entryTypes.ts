@@ -7,15 +7,14 @@ export type SyncStatus = "synced" | "pending" | "failed";
 
 export type Entry = {
     id: string;
-    user_id?: number;
+    userId?: number;
     title: string;
     content: string[];
     date: string;
-    drawings: DrawPath[];
-    sync_status: SyncStatus;
-    last_edited_at: string;
-    created_at: string;
-    updated_at: string;
+    drawingPaths: DrawPath[];
+    syncStatus: SyncStatus;
+    lastEditedAt: string;
+    createdAt: string;
 }
 
 export type SyncResponse = {

@@ -8,7 +8,7 @@ export async function syncPendingEntries(): Promise<SyncResponse | undefined> {
     const entries = await db.getAll('reflections')
     if (!entries) return;
 
-    const entriesToSync = entries.filter(entry => entry.sync_status = "pending")
+    const entriesToSync = entries.filter(entry => entry.syncStatus = "pending")
 
     const res = await fetch(`${API_URL}/reflection/sync`, {
         credentials: "include",

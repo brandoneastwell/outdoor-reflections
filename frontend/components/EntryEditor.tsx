@@ -20,7 +20,7 @@ const isEntryBlank = (entry: Entry) => {
     return (
         entry.title.trim() === "" &&
         entry.content[0] === "" &&
-        entry.drawings.length === 0
+        entry.drawingPaths.length === 0
     );
 };
 
@@ -40,7 +40,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
         entry.title,
         entry.content,
         entry.date,
-        entry.drawings,
+        entry.drawingPaths,
     ].join("|");
 
     useEffect(() => {
@@ -57,13 +57,13 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
         if (isEntryBlank(latestEntryRef.current)) return;
 
         const saveTimeout = setTimeout(() => {
-            const entryToSave: Entry = {...latestEntryRef.current, sync_status: "pending", last_edited_at: new Date().toISOString()};
+            const entryToSave: Entry = {...latestEntryRef.current, syncStatus: "pending", lastEditedAt: new Date().toISOString()};
             db.saveToLocalDB(entryToSave, "reflections");
             setEntry(entryToSave);
         }, 1000);
 
         const syncTimeout = setTimeout(async () => {
-            if (entry.sync_status === "synced") return;
+            if (entry.syncStatus === "synced") return;
             let syncedEntries;
 
             try {
@@ -121,14 +121,14 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     }, []);
 
     const drawUndo = () => {
-        if (entry.drawings.length === 0) return;
-        setEntry((prevEntry: Entry) => ({...prevEntry, drawings: prevEntry.drawings.slice(0, -1)}));
-        setDrawHistory((prevHistory: DrawPath[]) => [...prevHistory, entry.drawings[entry.drawings.length - 1]]);
+        if (entry.drawingPaths.length === 0) return;
+        setEntry((prevEntry: Entry) => ({...prevEntry, drawings: prevEntry.drawingPaths.slice(0, -1)}));
+        setDrawHistory((prevHistory: DrawPath[]) => [...prevHistory, entry.drawingPaths[entry.drawingPaths.length - 1]]);
     }
 
     const drawRedo = () => {
         if (drawHistory.length === 0) return;
-        setEntry((prevEntry: Entry) => ({...prevEntry, drawings: [...prevEntry.drawings, drawHistory[drawHistory.length - 1]]}));
+        setEntry((prevEntry: Entry) => ({...prevEntry, drawings: [...prevEntry.drawingPaths, drawHistory[drawHistory.length - 1]]}));
         setDrawHistory((prevHistory: DrawPath[]) => prevHistory.slice(0, -1));
     }
 
@@ -176,7 +176,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     <BarItem iconSize={22} svgPaths={SVG_PATHS.reverseIcon} label={"undo drawing tool"} onClick={() => drawUndo()} />
                     <BarItem iconSize={22} svgPaths={SVG_PATHS.forwardIcon} label={"redo drawing tool"} onClick={() => drawRedo()} />
                     <BarItem iconSize={22} svgPaths={SVG_PATHS.drawIcon} label={"draw tool"} fill={mode === "drawing" ? "#ce796b" : "#000000"} onClick={() => setMode(mode === "drawing" ? "text" : "drawing")} />
-                    <EntrySyncStatus isEntrySynced={entry.sync_status === "synced"} />
+                    <EntrySyncStatus isEntrySynced={entry.syncStatus === "synced"} />
                 </div>
             </div>
         </div>

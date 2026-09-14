@@ -1,6 +1,5 @@
 import {Entry} from "@/types/entryTypes";
 import Database from "@/lib/database";
-import {useAuth} from "@/lib/context/auth";
 const db = new Database();
 
 export function normalizeEntryContent(content: string | string[] | undefined) {
@@ -20,7 +19,7 @@ export function normalizeEntry(entry: Entry | (Omit<Entry, "content"> & { conten
 
 export function sortEntriesByLastUpdated(entries: Entry[])  {
     return entries.sort((a,b) => {
-        return new Date(b.last_edited_at).getTime() - new Date(a.last_edited_at).getTime()
+        return new Date(b.lastEditedAt).getTime() - new Date(a.lastEditedAt).getTime()
     })
 }
 
@@ -28,24 +27,22 @@ export async function isEntryEmpty(id: string) {
     const entry = await db.get(id, "reflections")
     if (!entry) return Error("Entry not found");
     const normalizedEntry = normalizeEntry(entry);
-    return normalizedEntry.content.length === 1 && normalizedEntry.content[0] === "" && normalizedEntry.title === "" && normalizedEntry.drawings.length === 0
+    return normalizedEntry.content.length === 1 && normalizedEntry.content[0] === "" && normalizedEntry.title === "" && normalizedEntry.drawingPaths.length === 0
 }
 
-export async function createEmptyEntry() {
+export async function createEmptyEntry(userId: number | null = null) {
     const curDate = new Date().toISOString();
-    const user = useAuth()
 
     const initEntry: Entry = {
         id: crypto.randomUUID(),
-        user_id: user.userId ? user.userId : undefined,
-        created_at: curDate,
-        last_edited_at: curDate,
-        sync_status: "pending",
-        updated_at: curDate,
+        userId: userId ? userId : undefined,
+        createdAt: curDate,
+        lastEditedAt: curDate,
+        syncStatus: "pending",
         title: "",
         content: [""],
         date: curDate,
-        drawings: []
+        drawingPaths: []
     }
 
     await db.saveToLocalDB(initEntry, "reflections")

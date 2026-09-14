@@ -42,7 +42,7 @@ export default function DrawingArea({ focus }: { focus: boolean }) {
     };
 
     const handlePointerUp = (pathData: string) => {
-        setEntry({...entry, drawings: [...entry.drawings, { path: pathData, color: drawColor }]});
+        setEntry({...entry, drawings: [...entry.drawingPaths, { path: pathData, color: drawColor }]});
         setIsDrawing(false);
         setPoints([]);
     }
@@ -64,7 +64,7 @@ export default function DrawingArea({ focus }: { focus: boolean }) {
              onPointerUp={() => handlePointerUp(pathData)}
              className={"absolute inset-0 h-full w-full z-10 touch-none " + (focus ? " pointer-events-auto cursor-crosshair" : " pointer-events-none")}>
             {points && isDrawing && <path d={pathData} fill={drawColor} />}
-            {entry.drawings.map((drawPath, index) => (
+            {entry.drawingPaths.map((drawPath, index) => (
                 <path key={index} d={drawPath.path} fill={drawPath.color} />
             ))}
         </svg>
