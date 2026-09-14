@@ -77,7 +77,7 @@ export class ReflectionsRepository {
             lastEditedAt: true,
           },
         });
-
+        
         if (!existing) {
           try {
             const res = await tx.reflection.create({
@@ -103,12 +103,12 @@ export class ReflectionsRepository {
               });
               continue;
             }
+            console.error('Error creating reflection:', error);
           }
         }
 
         if (existing && existing.userId !== userId) continue;
-        if (existing && existing.lastEditedAt > new Date(entry.lastEditedAt))
-          continue;
+        if (existing && existing.lastEditedAt > new Date(entry.lastEditedAt)) continue;
 
         try {
           const res = await tx.reflection.update({

@@ -25,8 +25,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async me(@Res() res: Response, @Req() req: Request) {
-    const user = req.user as { userId: number, email: string }
-    return res.status(200).json({ id: user.userId, email: user.email });
+    const user = req.user as SafeUser
+    return res.status(200).json({ id: user.id, email: user.email });
   }
 
   @UseGuards(LocalAuthGuard)

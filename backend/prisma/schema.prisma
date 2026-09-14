@@ -53,7 +53,7 @@ model Reflection {
 
 model ReflectionSuggestion {
   id             String             @id @default(uuid())
-  reflectionId   String
+  reflectionId   String             @db.Uuid
   type           SuggestionType
   text           String
   createdAt      DateTime           @default(now())

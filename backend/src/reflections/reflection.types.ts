@@ -10,11 +10,11 @@ export const ReflectionSchema = z.object({
     z.object({
       path: z.string(),
       color: z.string(),
-    }),
+    }).optional(),
   ),
   lastSyncedAt: z.iso.datetime().optional(),
   lastEditedAt: z.iso.datetime(),
-  createdAt: z.iso.datetime(),
+  createdAt: z.iso.datetime().optional(),
 });
 
 export type SyncResponse = {
