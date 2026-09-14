@@ -13,10 +13,10 @@ type AuthContextType = {
     userId: number | null;
     setUserId: (userId: number | null) => void;
     logout: () => void;
-    login: (credentials: User) => any;
-    refresh: () => any;
+    login: (credentials: User) => Promise<{ message: string, id: number }>;
+    refresh: () => void;
     loginWithProvider: (provider: Providers) => void;
-    createAccount: (user: User) => any;
+    createAccount: (user: User) => Promise<{ message: string, id: number }>;
     syncPendingEntries: () => Promise<SyncResponse | undefined>;
 }
 
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (!res.ok) throw new Error(await readJsonError(res, "Unable to sign in"));
-        const data = await res.json();
+        const data: { message: string, id: number } = await res.json();
         setUserId(data.id);
         return data;
     }
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (!res.ok) throw new Error(await readJsonError(res, "Unable to create account"));
-        const data = await res.json();
+        const data: { message: string, id: number } = await res.json();
         setUserId(data.id);
         return data;
     }

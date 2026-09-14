@@ -5,6 +5,7 @@ import {EntryContext} from "@/utils/entryContext";
 import {AnimatePresence, Reorder} from "motion/react";
 import TextAreaItem from "@/components/TextAreaItem";
 import {TextBox} from "@/types/customTypes";
+import {Entry} from "@/types/entryTypes";
 
 interface TextAreaProps {
     focus: boolean;
@@ -25,7 +26,7 @@ export default function TextArea({ focus, container }: TextAreaProps) {
 
     const updateContent = (nextContent: TextBox[]) => {
         setContent(nextContent);
-        setEntry((prevEntry: any) => ({
+        setEntry((prevEntry: Entry) => ({
             ...prevEntry,
             content: nextContent.map((line) => line.text),
         }));
@@ -49,7 +50,7 @@ export default function TextArea({ focus, container }: TextAreaProps) {
             line.id === id ? {...line, text: value} : line
         );
         setContent(nextContent);
-        setEntry((prevEntry: any) => ({
+        setEntry((prevEntry: Entry) => ({
             ...prevEntry,
             content: nextContent.map((line) => line.text),
         }));

@@ -9,21 +9,19 @@ import {PasswordSchema} from "@/types/userTypes";
 import {useRouter, useSearchParams} from "next/navigation";
 
 export default function Page() {
-    const [token, setToken] = useState<string | null>(null);
+    const searchParams = useSearchParams();
+    const [token] = useState<string | null>(() => searchParams.get("token"));
     const [firstPassword, setFirstPassword] = useState<string>("");
     const [secondPassword, setSecondPassword] = useState<string>("");
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(() => token ? null : "Invalid token");
     const [message, setMessage] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-    const searchParams = useSearchParams();
     const router = useRouter();
 
     useEffect(() => {
-        const token = searchParams.get("token");
-        if (!token) return setError("Invalid token");
-        setToken(token)
+        if (!token) return;
         window.history.replaceState({}, '', '/auth/reset-password');
-    }, [searchParams])
+    }, [token])
 
     const handleReset = async () => {
         if (isSubmitting) return;
