@@ -5,16 +5,15 @@ import {
   Param,
   Post,
   Req,
-  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ReflectionsService } from './reflections.service';
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
 import { SyncService } from './sync.service';
 import { JwtAuthGuard } from '../auth/jwt-auth-guard';
-import { ReflectionDto } from './reflection.types';
+import type { ReflectionDto } from './reflection.types';
 import { SafeUser } from '../user/user.types';
-import {IntelligenceService} from "./intelligence.service";
+import { IntelligenceService } from './intelligence.service';
 
 @Controller('reflection')
 export class ReflectionsController {
@@ -26,8 +25,7 @@ export class ReflectionsController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  async create(@Req() req: Request, @Res() res: Response) {
-    const entry: ReflectionDto = req.body;
+  create(@Req() req: Request, @Body() entry: ReflectionDto) {
     const user: SafeUser = req.user as SafeUser;
     return this.reflectionService.createEntry(entry, user.id);
   }
@@ -46,8 +44,12 @@ export class ReflectionsController {
   }
 
   @Post(':id/intelligence/sentence-starters')
-  async getSentenceStarters(@Req() req: Request, @Res() res: Response) {
-    const { currentContent, recentContent }: { currentContent: string, recentContent: string[] } = req.body;
-    return await this.intelligenceService.generateSentenceStarters(currentContent, recentContent);
+  getSentenceStarters(
+    @Body() body: { currentContent: string; recentContent: string[] },
+  ) {
+    return this.intelligenceService.generateSentenceStarters(
+      body.currentContent,
+      body.recentContent,
+    );
   }
 }

@@ -5,7 +5,11 @@ jest.mock('bcryptjs', () => ({
   hash: jest.fn(),
 }));
 
-import {ConflictException, NotFoundException, UnauthorizedException} from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
@@ -15,7 +19,7 @@ import { UserService } from '../user/user.service';
 import type { SafeUser } from '../user/user.types';
 import { randomUUID } from 'node:crypto';
 import { MailService } from '../mail/mail.service';
-import {ConfigService} from "@nestjs/config";
+import { ConfigService } from '@nestjs/config';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -34,16 +38,29 @@ describe('AuthService', () => {
   };
 
   const mockJwtService = {
+    decode: jest.fn(),
     signAsync: jest.fn(),
     verifyAsync: jest.fn(),
+  };
+
+  const mockConfigService = {
+    get: jest.fn((key: string) => {
+      if (key === 'JWT_SECRET') return 'test-access-secret';
+      if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
+      return undefined;
+    }),
   };
 
   const mockMailService = {
     sendPasswordResetEmail: jest.fn(),
   };
 
-  const compareMock = jest.mocked(bcrypt.compare);
-  const hashMock = jest.mocked(bcrypt.hash);
+  const compareMock = bcrypt.compare as unknown as jest.MockedFunction<
+    (plainText: string, hash: string) => Promise<boolean>
+  >;
+  const hashMock = bcrypt.hash as unknown as jest.MockedFunction<
+    (plainText: string, saltRounds: number) => Promise<string>
+  >;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -54,7 +71,8 @@ describe('AuthService', () => {
 
     const app = await Test.createTestingModule({
       providers: [
-        AuthService, ConfigService,
+        AuthService,
+        { provide: ConfigService, useValue: mockConfigService },
         { provide: UserService, useValue: mockUserService },
         { provide: AuthRepository, useValue: mockAuthRepository },
         { provide: JwtService, useValue: mockJwtService },
@@ -128,13 +146,15 @@ describe('AuthService', () => {
     const user: SafeUser = { id: 1, email: 'sam@example.com' };
 
     it('rejects a duplicate device session', async () => {
-      mockAuthRepository.findRefreshTokenByUser.mockResolvedValue({
+      mockJwtService.decode.mockReturnValue({ sid: 'session-1', sub: user.id });
+      mockAuthRepository.findRefreshToken.mockResolvedValue({
         id: 'session-1',
+        createdAt: new Date(),
       });
 
-      await expect(authService.login(user)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
+      await expect(
+        authService.login(user, 'existing-refresh-token'),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('creates a refresh session and returns signed tokens', async () => {
@@ -150,8 +170,11 @@ describe('AuthService', () => {
       const result = await authService.login(user);
 
       expect(result).toEqual({
-        refresh_token: 'refresh-token',
-        access_token: 'access-token',
+        token: {
+          refresh_token: 'refresh-token',
+          access_token: 'access-token',
+        },
+        userId: user.id,
       });
       expect(mockAuthRepository.createRefreshSession).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -216,18 +239,14 @@ describe('AuthService', () => {
         email: 'sam@example.com',
       });
       compareMock.mockResolvedValue(true);
-      mockJwtService.signAsync
-        .mockResolvedValueOnce('new-refresh-token')
-        .mockResolvedValueOnce('new-access-token');
-      hashMock.mockResolvedValue('hashed-new-refresh-token');
+      mockJwtService.signAsync.mockResolvedValue('new-access-token');
 
       const result = await authService.refresh('refresh-token');
 
       expect(mockJwtService.verifyAsync).toHaveBeenCalledWith('refresh-token', {
-        secret: process.env.JWT_REFRESH_SECRET,
+        secret: 'test-refresh-secret',
       });
       expect(result).toEqual({
-        refresh_token: 'new-refresh-token',
         access_token: 'new-access-token',
       });
     });
@@ -303,6 +322,7 @@ describe('AuthService', () => {
       mockUserService.findUserByEmail.mockResolvedValue({
         id: 1,
         email: 'sam@example.com',
+        password: 'hashed-password',
       });
 
       mockJwtService.signAsync.mockResolvedValue('reset-token');
@@ -317,7 +337,9 @@ describe('AuthService', () => {
     it('rejects reset requests for unknown users', async () => {
       mockUserService.findUserByEmail.mockResolvedValue(null);
 
-      await expect(authService.sendPasswordResetLink('missing@example.com')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        authService.sendPasswordResetLink('missing@example.com'),
+      ).rejects.toBeInstanceOf(NotFoundException);
       expect(mockMailService.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
   });

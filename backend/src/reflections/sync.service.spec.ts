@@ -70,7 +70,8 @@ describe('SyncService', () => {
         status: 'SUCCESS',
         count: {
           total: 1,
-          synced: 1,
+          updated: 1,
+          created: 0,
           failed: 0,
         },
         service_name: 'reflections_sync_service',
@@ -96,7 +97,8 @@ describe('SyncService', () => {
         status: 'PARTIAL',
         count: {
           total: 1,
-          synced: 1,
+          updated: 1,
+          created: 0,
           failed: 1,
         },
         errors: [{ entryId: entry.id, error: 'invalid date' }],
@@ -116,7 +118,8 @@ describe('SyncService', () => {
         status: 'FAILED',
         count: {
           total: 1,
-          synced: 0,
+          updated: 0,
+          created: 0,
           failed: 1,
         },
       },

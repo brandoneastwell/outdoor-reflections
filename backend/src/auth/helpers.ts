@@ -1,22 +1,27 @@
-export function setAuthTokenInCookies(res: any, token: { access_token?: string, refresh_token?: string}) {
-    token.access_token && res.cookie('access_token', token.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-    });
+import type { Request, Response } from 'express';
+import type { Tokens } from './types';
 
-    token.refresh_token && res.cookie('refresh_token', token.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
+export function setAuthTokenInCookies(res: Response, token: Partial<Tokens>) {
+  if (token.access_token) {
+    res.cookie('access_token', token.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
     });
+  }
+
+  if (token.refresh_token) {
+    res.cookie('refresh_token', token.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+  }
 }
 
-export function getJWTFromCookie(req) {
-    if (req && req.cookies) {
-        return req.cookies['access_token'];
-    }
-    return null;
+export function getJWTFromCookie(req: Request): string | null {
+  const accessToken: unknown = req.cookies?.['access_token'];
+  return typeof accessToken === 'string' ? accessToken : null;
 }

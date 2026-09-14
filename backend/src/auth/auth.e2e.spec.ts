@@ -9,9 +9,46 @@ import { JwtAuthGuard } from './jwt-auth-guard';
 import { PrismaService } from '../database/prisma.service';
 import * as bcrypt from 'bcryptjs';
 import cookieParser from 'cookie-parser';
+import type { Server } from 'node:http';
+import type { SafeUser } from '../user/user.types';
+
+type GoogleTestUser = {
+  googleId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+};
+
+type AuthTestRequest = {
+  body: { email?: string };
+  user?: SafeUser | GoogleTestUser;
+};
+
+type ValidationErrorBody = {
+  statusCode: number;
+  message: string;
+  errors: Array<{
+    path: string[];
+    code: string;
+  }>;
+};
+
+type MessageBody = {
+  message: string;
+};
+
+type TokensBody = {
+  access_token?: string;
+  refresh_token?: string;
+};
+
+function responseBody<T>(response: { body: unknown }): T {
+  return response.body as T;
+}
 
 describe('Auth flow end to end tests', () => {
   let app: INestApplication;
+  let httpServer: Server;
   let prisma: PrismaService;
 
   beforeAll(async () => {
@@ -34,7 +71,7 @@ describe('Auth flow end to end tests', () => {
       .overrideGuard(GoogleAuthGuard)
       .useValue({
         canActivate(context: ExecutionContext) {
-          const request = context.switchToHttp().getRequest();
+          const request = context.switchToHttp().getRequest<AuthTestRequest>();
           request.user = googleUser;
           return true;
         },
@@ -42,7 +79,7 @@ describe('Auth flow end to end tests', () => {
       .overrideGuard(LocalAuthGuard)
       .useValue({
         async canActivate(context: ExecutionContext) {
-          const request = context.switchToHttp().getRequest();
+          const request = context.switchToHttp().getRequest<AuthTestRequest>();
           const user = request.body?.email
             ? await prisma.userAccount.findUnique({
                 where: { email: request.body.email },
@@ -58,7 +95,7 @@ describe('Auth flow end to end tests', () => {
       .overrideGuard(JwtAuthGuard)
       .useValue({
         async canActivate(context: ExecutionContext) {
-          const request = context.switchToHttp().getRequest();
+          const request = context.switchToHttp().getRequest<AuthTestRequest>();
           const user = await prisma.userAccount.findFirst();
           request.user = user
             ? { id: user.id, email: user.email }
@@ -72,6 +109,7 @@ describe('Auth flow end to end tests', () => {
     app.use(cookieParser());
     await app.init();
 
+    httpServer = app.getHttpServer() as Server;
     prisma = module.get(PrismaService);
   });
 
@@ -88,7 +126,7 @@ describe('Auth flow end to end tests', () => {
     const email = `register-${Date.now()}@example.com`;
     const password = 'password123';
 
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/auth/register')
       .send({ email, password })
       .expect(201);
@@ -108,7 +146,7 @@ describe('Auth flow end to end tests', () => {
     const email = `min-password-${Date.now()}@example.com`;
     const password = '1234567';
 
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/auth/register')
       .send({ email, password })
       .expect(201);
@@ -121,7 +159,7 @@ describe('Auth flow end to end tests', () => {
   });
 
   it('POST auth/register rejects passwords shorter than 7 characters', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(httpServer)
       .post('/auth/register')
       .send({
         email: `short-password-${Date.now()}@example.com`,
@@ -129,11 +167,12 @@ describe('Auth flow end to end tests', () => {
       })
       .expect(400);
 
-    expect(response.body).toMatchObject({
+    const body = responseBody<ValidationErrorBody>(response);
+    expect(body).toMatchObject({
       statusCode: 400,
       message: 'Validation failed',
     });
-    expect(response.body.errors).toEqual(
+    expect(body.errors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           path: ['password'],
@@ -144,7 +183,7 @@ describe('Auth flow end to end tests', () => {
   });
 
   it('POST auth/register rejects passwords longer than 32 characters', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(httpServer)
       .post('/auth/register')
       .send({
         email: `long-password-${Date.now()}@example.com`,
@@ -152,11 +191,12 @@ describe('Auth flow end to end tests', () => {
       })
       .expect(400);
 
-    expect(response.body).toMatchObject({
+    const body = responseBody<ValidationErrorBody>(response);
+    expect(body).toMatchObject({
       statusCode: 400,
       message: 'Validation failed',
     });
-    expect(response.body.errors).toEqual(
+    expect(body.errors).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           path: ['password'],
@@ -170,7 +210,7 @@ describe('Auth flow end to end tests', () => {
     const email = `login-${Date.now()}@example.com`;
     const password = 'password123';
 
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/auth/register')
       .send({ email, password })
       .expect(201);
@@ -181,13 +221,13 @@ describe('Auth flow end to end tests', () => {
 
     expect(user).not.toBeNull();
 
-    const response = await request(app.getHttpServer())
+    const response = await request(httpServer)
       .post('/auth/login')
       .send({ email, password })
       .expect(201);
 
-    expect(response.headers['set-cookie']).toBeDefined();
-    expect(response.headers['set-cookie']).toEqual(
+    expect(response.get('Set-Cookie')).toBeDefined();
+    expect(response.get('Set-Cookie')).toEqual(
       expect.arrayContaining([
         expect.stringContaining('access_token='),
         expect.stringContaining('refresh_token='),
@@ -196,12 +236,12 @@ describe('Auth flow end to end tests', () => {
   });
 
   it('POST auth/logout clears the auth cookies', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/auth/logout')
-      .expect(200);
+    const response = await request(httpServer).post('/auth/logout').expect(200);
 
-    expect(response.body).toEqual({ message: 'Logged out' });
-    expect(response.headers['set-cookie']).toEqual(
+    expect(responseBody<MessageBody>(response)).toEqual({
+      message: 'Logged out',
+    });
+    expect(response.get('Set-Cookie')).toEqual(
       expect.arrayContaining([
         expect.stringContaining('access_token=;'),
         expect.stringContaining('refresh_token=;'),
@@ -213,61 +253,67 @@ describe('Auth flow end to end tests', () => {
     const email = `refresh-${Date.now()}@example.com`;
     const password = 'password123';
 
-    await request(app.getHttpServer())
+    await request(httpServer)
       .post('/auth/register')
       .send({ email, password })
       .expect(201);
 
-    const loginResponse = await request(app.getHttpServer())
+    const loginResponse = await request(httpServer)
       .post('/auth/login')
       .send({ email, password })
       .expect(201);
 
-    const setCookies = loginResponse.headers['set-cookie'];
+    const setCookies = loginResponse.get('Set-Cookie');
     expect(setCookies).toBeDefined();
-    const refreshCookie = Array.isArray(setCookies)
-      ? setCookies.find((cookie: string) => cookie.startsWith('refresh_token='))
-      : undefined;
+    const refreshCookie = setCookies?.find((cookie) =>
+      cookie.startsWith('refresh_token='),
+    );
 
-    expect(refreshCookie).toBeDefined();
+    if (!refreshCookie) throw new Error('Refresh cookie was not set');
 
-    const response = await request(app.getHttpServer())
+    const response = await request(httpServer)
       .post('/auth/refresh')
       .set('Cookie', refreshCookie.split(';')[0])
       .expect(201);
 
-    expect(response.body.access_token).toBeDefined();
-    expect(response.body.refresh_token).toBeDefined();
+    const body = responseBody<TokensBody>(response);
+    expect(body.access_token).toBeDefined();
+    expect(body.refresh_token).toBeDefined();
   });
 
   it('POST auth/refresh rejects when the refresh cookie is missing', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(httpServer)
       .post('/auth/refresh')
       .expect(401);
 
-    expect(response.body.message).toBe('User is not signed in');
+    expect(responseBody<MessageBody>(response).message).toBe(
+      'User is not signed in',
+    );
   });
 
   it('GET auth/google returns successfully through the guard', async () => {
-    await request(app.getHttpServer()).get('/auth/google').expect(200);
+    await request(httpServer).get('/auth/google').expect(200);
   });
 
   it('GET auth/google/callback returns login tokens', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(httpServer)
       .get('/auth/google/callback')
       .expect(200);
 
-    expect(response.body.access_token).toBeDefined();
-    expect(response.body.refresh_token).toBeDefined();
+    const body = responseBody<TokensBody>(response);
+    expect(body.access_token).toBeDefined();
+    expect(body.refresh_token).toBeDefined();
   });
 
   it('GET auth/google/callback called twice returns a 409 conflict', async () => {
-    await request(app.getHttpServer()).get('/auth/google/callback').expect(200);
+    await request(httpServer).get('/auth/google/callback').expect(200);
 
-    const res = await request(app.getHttpServer())
+    const res = await request(httpServer)
       .get('/auth/google/callback')
       .expect(409);
 
-    expect(res.body.message).toBe('User already signed in on this device');
+    expect(responseBody<MessageBody>(res).message).toBe(
+      'User already signed in on this device',
+    );
   });
 });

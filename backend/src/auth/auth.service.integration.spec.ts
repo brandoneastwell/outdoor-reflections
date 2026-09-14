@@ -10,6 +10,7 @@ import { PrismaService } from '../database/prisma.service';
 import { ConfigModule } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { MailService } from '../mail/mail.service';
+import type { AccessTokenPayload, RefreshTokenPayload } from './types';
 
 describe('AuthService integration', () => {
   let app: TestingModule;
@@ -70,44 +71,47 @@ describe('AuthService integration', () => {
     await authService.register(credentials);
 
     const createdUser = await userService.findUserByEmail(email);
-    expect(createdUser).not.toBeNull();
+    if (!createdUser) throw new Error('Registered user was not found');
 
-    const { password: _password, ...safeUser } = createdUser!;
-    const tokens = await authService.login(safeUser);
+    const safeUser = { id: createdUser.id, email: createdUser.email };
+    const authenticated = await authService.login(safeUser);
+    const tokens = authenticated.token;
 
-    const storedSession = await authRepo.findRefreshTokenByUser(
-      createdUser!.id,
-    );
-    expect(storedSession).toBeDefined();
-    expect(storedSession?.tokenHash).toBeTruthy();
+    const storedSession = await authRepo.findRefreshTokenByUser(createdUser.id);
+    if (!storedSession?.tokenHash)
+      throw new Error('Stored refresh session was not found');
     expect(
-      await bcrypt.compare(tokens.refresh_token, storedSession!.tokenHash!),
+      await bcrypt.compare(tokens.refresh_token, storedSession.tokenHash),
     ).toBe(true);
 
-    const accessPayload = await jwtService.verifyAsync(tokens.access_token);
-    const refreshPayload = await jwtService.verifyAsync(tokens.refresh_token, {
-      secret: process.env.JWT_REFRESH_SECRET,
-    });
+    const accessPayload = await jwtService.verifyAsync<AccessTokenPayload>(
+      tokens.access_token,
+    );
+    const refreshPayload = await jwtService.verifyAsync<RefreshTokenPayload>(
+      tokens.refresh_token,
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+      },
+    );
 
     expect(accessPayload).toMatchObject({
       email,
-      sub: createdUser!.id,
+      sub: createdUser.id,
     });
     expect(refreshPayload).toMatchObject({
-      sub: createdUser!.id,
+      sub: createdUser.id,
     });
     expect(refreshPayload).toHaveProperty('sid');
 
     const refreshed = await authService.refresh(tokens.refresh_token);
-    const updatedSession = await authRepo.findRefreshToken(storedSession!.id);
+    const updatedSession = await authRepo.findRefreshToken(storedSession.id);
 
     expect(updatedSession).toBeDefined();
     expect(
-      await bcrypt.compare(refreshed.refresh_token, updatedSession!.tokenHash!),
-    ).toBe(true);
-    expect(await jwtService.verifyAsync(refreshed.access_token)).toMatchObject({
+      await jwtService.verifyAsync<AccessTokenPayload>(refreshed.access_token),
+    ).toMatchObject({
       email,
-      sub: createdUser!.id,
+      sub: createdUser.id,
     });
   });
 
@@ -134,7 +138,8 @@ describe('AuthService integration', () => {
     await authService.register(credentials);
 
     const createdUser = await userService.findUserByEmail(email);
-    const { password: _password, ...safeUser } = createdUser!;
+    if (!createdUser) throw new Error('Registered user was not found');
+    const safeUser = { id: createdUser.id, email: createdUser.email };
 
     await authService.login(safeUser);
 

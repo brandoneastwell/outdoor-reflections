@@ -2,14 +2,27 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { IntelligenceService } from './intelligence.service';
 import { GroqProvider } from './groq.provider';
 import { ReflectionsRepository } from './reflections.repository';
+import type {
+  ChatCompletionMessageParam,
+  CompletionCreateParams,
+} from 'groq-sdk/resources/chat/completions';
 
 describe('IntelligenceService integration', () => {
   let intelligenceService: IntelligenceService;
   let app: TestingModule;
 
-  const mockGroqProvider = {
-    chatGeneration: jest.fn(),
-  };
+  const chatGeneration = jest.fn(
+    (
+      messages: ChatCompletionMessageParam[],
+      responseFormat: CompletionCreateParams.ResponseFormatJsonSchema,
+    ): Promise<string[]> => {
+      void messages;
+      void responseFormat;
+      return Promise.resolve([]);
+    },
+  );
+
+  const mockGroqProvider = { chatGeneration };
 
   const mockReflectionsRepository = {};
 
@@ -64,34 +77,31 @@ describe('IntelligenceService integration', () => {
       ],
     );
 
-    expect(mockGroqProvider.chatGeneration).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          role: 'system',
-          content: expect.stringContaining('Generate exactly 3 short sentence starters.'),
-        }),
-        expect.objectContaining({
-          role: 'user',
-          content: expect.stringContaining('CURRENT JOURNAL ENTRY: Today I wanted to stay outside longer.'),
-        }),
-      ]),
-      expect.objectContaining({
-        type: 'json_schema',
-        json_schema: expect.objectContaining({
-          name: 'sentence_starters',
-          schema: expect.objectContaining({
-            properties: expect.objectContaining({
-              starters: expect.any(Object),
-            }),
-          }),
-        }),
-      }),
-    );
+    expect(chatGeneration).toHaveBeenCalledTimes(1);
+    const call = chatGeneration.mock.calls[0];
+    if (!call) throw new Error('Groq provider was not called');
+    const [messages, responseFormat] = call;
+    const systemMessage = messages.find((message) => message.role === 'system');
+    const userMessage = messages.find((message) => message.role === 'user');
+    if (!systemMessage || typeof systemMessage.content !== 'string')
+      throw new Error('System message was not generated');
+    if (!userMessage || typeof userMessage.content !== 'string')
+      throw new Error('User message was not generated');
 
-    expect(mockGroqProvider.chatGeneration.mock.calls[0][0][1].content).toContain(
+    expect(systemMessage.content).toContain(
+      'Generate exactly 3 short sentence starters.',
+    );
+    expect(userMessage.content).toContain(
+      'CURRENT JOURNAL ENTRY: Today I wanted to stay outside longer.',
+    );
+    expect(responseFormat.type).toBe('json_schema');
+    expect(responseFormat.json_schema.name).toBe('sentence_starters');
+    expect(responseFormat.json_schema.schema).toBeDefined();
+
+    expect(userMessage.content).toContain(
       'Previous entry 1:\nYesterday I walked along the river and watched the light change.',
     );
-    expect(mockGroqProvider.chatGeneration.mock.calls[0][0][1].content).toContain(
+    expect(userMessage.content).toContain(
       'Previous entry 2:\nI have been thinking about getting back on the trail.',
     );
 

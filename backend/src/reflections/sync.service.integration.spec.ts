@@ -42,10 +42,9 @@ describe('SyncService integration', () => {
       reflectionId,
     );
     testUser = user;
-    testReflections = [];
-    reflections.forEach((r) => {
-      r.userId === user.id && testReflections.push(toReflectionDto(r));
-    });
+    testReflections = reflections
+      .filter((reflection) => reflection.userId === user.id)
+      .map(toReflectionDto);
   });
 
   afterAll(async () => {
@@ -66,7 +65,7 @@ describe('SyncService integration', () => {
       lastSyncedAt: nextDate,
       lastEditedAt: nextDate,
       createdAt: baseDate,
-     };
+    };
 
     const result = await syncService.syncEntries([entry], testUser);
 

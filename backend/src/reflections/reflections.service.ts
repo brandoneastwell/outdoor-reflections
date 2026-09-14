@@ -6,12 +6,12 @@ import { ReflectionDto } from './reflection.types';
 export class ReflectionsService {
   constructor(private repo: ReflectionsRepository) {}
 
-  createEntry(reflection: ReflectionDto, userId: number) {
+  async createEntry(reflection: ReflectionDto, userId: number) {
     try {
-      return this.repo.create(reflection, userId);
+      return await this.repo.create(reflection, userId);
     } catch (err) {
-      console.log(err);
-      throw new Error('Failed to create reflection: ' + err.message);
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to create reflection: ${message}`);
     }
   }
 }

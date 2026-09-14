@@ -4,8 +4,9 @@ import {
   Controller,
   Get,
   HttpCode,
-  HttpStatus, NotFoundException,
-  Post, Req,
+  HttpStatus,
+  Post,
+  Req,
   Res,
   UnauthorizedException,
   UseGuards,
@@ -13,10 +14,10 @@ import {
 import type { Request, Response } from 'express';
 import { LocalAuthGuard } from './local-auth-guard';
 import { JwtAuthGuard } from './jwt-auth-guard';
-import {CredentialsDto, EmailDto, ResetPasswordDto} from './auth.dto';
+import { CredentialsDto, EmailDto, ResetPasswordDto } from './auth.dto';
 import { SafeUser } from '../user/user.types';
 import { GoogleAuthGuard } from './google-auth-guard';
-import {setAuthTokenInCookies} from "./helpers";
+import { setAuthTokenInCookies } from './helpers';
 
 @Controller('auth')
 export class AuthController {
@@ -24,32 +25,39 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async me(@Res() res: Response, @Req() req: Request) {
-    const user = req.user as SafeUser
+  me(@Res() res: Response, @Req() req: Request) {
+    const user = req.user as SafeUser;
     return res.status(200).json({ id: user.id, email: user.email });
   }
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {
-    const refreshToken: string = req.cookies['refresh_token'];
-    const authenticated = await this.authService.login(req.user as SafeUser, refreshToken);
-    setAuthTokenInCookies(res, authenticated.token)
-    return res.status(201).json({ message: 'Successfully logged in', id: authenticated.userId });
+    const refreshToken: string = req.cookies['refresh_token'] as string;
+    const authenticated = await this.authService.login(
+      req.user as SafeUser,
+      refreshToken,
+    );
+    setAuthTokenInCookies(res, authenticated.token);
+    return res
+      .status(201)
+      .json({ message: 'Successfully logged in', id: authenticated.userId });
   }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() credentials: CredentialsDto, @Res() res: Response) {
     const user: SafeUser = await this.authService.register(credentials);
-    const authenticated = await this.authService.login(user)
-    setAuthTokenInCookies(res, authenticated.token)
-    return res.status(201).json({ message: 'Successfully registered', id: authenticated.userId });
+    const authenticated = await this.authService.login(user);
+    setAuthTokenInCookies(res, authenticated.token);
+    return res
+      .status(201)
+      .json({ message: 'Successfully registered', id: authenticated.userId });
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  async logout(@Res() res: Response) {
+  logout(@Res() res: Response) {
     res.clearCookie('access_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -69,39 +77,39 @@ export class AuthController {
 
   @Post('refresh')
   async refresh(@Res() res: Response, @Req() req: Request) {
-    const refreshToken: string = req.cookies['refresh_token'];
+    const refreshToken: string = req.cookies['refresh_token'] as string;
     if (!refreshToken) throw new UnauthorizedException('User is not signed in');
     const accessToken = await this.authService.refresh(refreshToken);
-    setAuthTokenInCookies(res, accessToken)
+    setAuthTokenInCookies(res, accessToken);
     return res.status(201).json({ message: 'refreshed token' });
   }
 
   @Get('google')
   @UseGuards(GoogleAuthGuard)
-  async googleLogin(@Req() req: Request) {}
+  googleLogin() {}
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
-  async googleCallback(@Req() req: Request) {
+  googleCallback(@Req() req: Request) {
     return this.authService.loginWithGoogle(req);
   }
 
   @Post('forgot-password')
   async forgotPassword(@Body() body: EmailDto, @Res() res: Response) {
-    const message = "If the email matches an account in our system, a password reset link has been sent."
+    const message: string =
+      'If the email matches an account in our system, a password reset link has been sent.';
 
     try {
-      await this.authService.sendPasswordResetLink(body.email)
-      return res.status(200).json({ message })
-    } catch (error) {
-      if (error instanceof NotFoundException) return res.status(200).json({ message })
-      return error
+      await this.authService.sendPasswordResetLink(body.email);
+      return res.status(200).json({ message });
+    } catch {
+      return res.status(200).json({ message });
     }
   }
 
   @Post('reset-password')
   @HttpCode(HttpStatus.CREATED)
   async resetPassword(@Body() body: ResetPasswordDto) {
-    return await this.authService.resetPassword(body.token, body.password)
+    return this.authService.resetPassword(body.token, body.password);
   }
 }

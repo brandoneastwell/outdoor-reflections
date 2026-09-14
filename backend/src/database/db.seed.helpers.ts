@@ -1,5 +1,4 @@
 import { PrismaService } from './prisma.service';
-import {Reflection} from "../../generated/prisma/client";
 
 export const seedUser = (email: string, prisma: PrismaService) => {
   return prisma.userAccount.create({

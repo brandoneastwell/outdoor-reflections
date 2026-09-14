@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import {
   ReflectionDto,
-  ReflectionSchema, SyncResults,
+  ReflectionSchema,
+  SyncResults,
   toReflectionDto,
 } from './reflection.types';
-import {Prisma, Reflection} from '../../generated/prisma/client';
+import { Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class ReflectionsRepository {
@@ -67,7 +68,7 @@ export class ReflectionsRepository {
             entryId: entry.id,
             error: validation.error.message,
           });
-          continue
+          continue;
         }
 
         const existing = await tx.reflection.findUnique({
@@ -77,7 +78,7 @@ export class ReflectionsRepository {
             lastEditedAt: true,
           },
         });
-        
+
         if (!existing) {
           try {
             const res = await tx.reflection.create({
@@ -108,7 +109,8 @@ export class ReflectionsRepository {
         }
 
         if (existing && existing.userId !== userId) continue;
-        if (existing && existing.lastEditedAt > new Date(entry.lastEditedAt)) continue;
+        if (existing && existing.lastEditedAt > new Date(entry.lastEditedAt))
+          continue;
 
         try {
           const res = await tx.reflection.update({

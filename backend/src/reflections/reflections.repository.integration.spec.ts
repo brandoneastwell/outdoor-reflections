@@ -43,7 +43,7 @@ describe('ReflectionsRepository', () => {
   });
 
   afterAll(async () => {
-    prisma.userAccount.delete({
+    await prisma.userAccount.delete({
       where: { id: testUserID },
     });
     await prisma.$disconnect();

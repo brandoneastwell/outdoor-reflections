@@ -1,7 +1,8 @@
 import {
   ConflictException,
   Injectable,
-  Logger, NotFoundException,
+  Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { LoginProvider, SafeUser } from '../user/user.types';
@@ -13,7 +14,21 @@ import { AuthRepository } from './auth.repository';
 import { REFRESH_TOKEN_AGE_DAYS } from './constants';
 import { RefreshToken } from '../../generated/prisma/client';
 import { MailService } from '../mail/mail.service';
-import {ConfigService} from "@nestjs/config";
+import { ConfigService } from '@nestjs/config';
+import type {
+  AccessTokenPayload,
+  GoogleUser,
+  RefreshTokenPayload,
+} from './types';
+
+function isGoogleUser(user: unknown): user is GoogleUser {
+  if (!user || typeof user !== 'object') return false;
+  const candidate = user as Partial<GoogleUser>;
+  return (
+    typeof candidate.googleId === 'string' &&
+    typeof candidate.email === 'string'
+  );
+}
 
 @Injectable()
 export class AuthService {
@@ -22,7 +37,7 @@ export class AuthService {
     private authRepository: AuthRepository,
     private jwtService: JwtService,
     private mailService: MailService,
-    private configService: ConfigService
+    private configService: ConfigService,
   ) {}
   private readonly logger = new Logger(AuthService.name);
 
@@ -35,8 +50,7 @@ export class AuthService {
     if (!isPasswordValid)
       throw new UnauthorizedException('Invalid email or password');
 
-    const { password: _, ...safeUser } = user;
-    return safeUser;
+    return { id: user.id, email: user.email };
   }
 
   async register(credentials: CredentialsDto) {
@@ -47,11 +61,17 @@ export class AuthService {
     this.logger.log(`User ${user.email} attempting login`);
 
     if (refreshToken) {
-      const decode = this.jwtService.decode(refreshToken) as { sid: string }
-      const refreshSession = await this.authRepository.findRefreshToken(decode.sid);
+      const decoded = this.jwtService.decode<RefreshTokenPayload>(refreshToken);
+      const refreshSession = decoded?.sid
+        ? await this.authRepository.findRefreshToken(decoded.sid)
+        : null;
       if (refreshSession) {
-        const expired = (refreshSession.createdAt.getDate() + REFRESH_TOKEN_AGE_DAYS) > new Date().getDate();
-        if (!expired) throw new ConflictException('You are already signed in on this device');
+        const expiresAt = new Date(refreshSession.createdAt);
+        expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_AGE_DAYS);
+        if (expiresAt > new Date())
+          throw new ConflictException(
+            'You are already signed in on this device',
+          );
       }
     }
 
@@ -64,21 +84,25 @@ export class AuthService {
         tokenHash: null,
       });
 
-    return { token: await this.createTokens(user, session.id), userId: user.id }
+    return {
+      token: await this.createTokens(user, session.id),
+      userId: user.id,
+    };
   }
 
-  async loginWithGoogle(req) {
-    if (!req.user) throw new UnauthorizedException('Invalid credentials');
+  async loginWithGoogle(req: { user?: unknown }) {
+    if (!isGoogleUser(req.user))
+      throw new UnauthorizedException('Invalid credentials');
 
     const user = await this.userService.findUserByEmail(req.user.email);
-    if (user) return await this.login({ email: user.email, id: user.id });
+    if (user) return this.login({ email: user.email, id: user.id });
 
     const provider: LoginProvider = { id: req.user.googleId, name: 'google' };
     const newUser = await this.userService.createProviderUser(
       req.user.email,
       provider,
     );
-    return await this.login({ email: newUser.email, id: newUser.id });
+    return this.login({ email: newUser.email, id: newUser.id });
   }
 
   async isRefreshTokenValid(refreshSessionId: string, token: string) {
@@ -94,20 +118,27 @@ export class AuthService {
     let payload: { sid: string; sub: number };
 
     try {
-      payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: this.configService.get('JWT_REFRESH_SECRET'),
-      });
-    } catch (e) {
+      payload = await this.jwtService.verifyAsync<RefreshTokenPayload>(
+        refreshToken,
+        {
+          secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        },
+      );
+    } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
     const isValid = await this.isRefreshTokenValid(payload.sid, refreshToken);
     if (!isValid) throw new UnauthorizedException('Invalid refresh token');
 
-    const user: SafeUser = await this.userService.findUserByID(payload.sub) as SafeUser;
+    const user: SafeUser = (await this.userService.findUserByID(
+      payload.sub,
+    )) as SafeUser;
 
     const accessTokenPayload = { email: user.email, sub: user.id };
-    return { access_token: this.jwtService.sign(accessTokenPayload) }
+    return {
+      access_token: await this.jwtService.signAsync(accessTokenPayload),
+    };
   }
 
   async createTokens(user: SafeUser, refreshSessionId: string) {
@@ -123,7 +154,7 @@ export class AuthService {
     return {
       refresh_token: await this.jwtService.signAsync(refreshPayload, {
         expiresIn: `${REFRESH_TOKEN_AGE_DAYS}d`,
-        secret: this.configService.get('JWT_REFRESH_SECRET'),
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       }),
       access_token: await this.jwtService.signAsync(payload),
     };
@@ -131,14 +162,17 @@ export class AuthService {
 
   async sendPasswordResetLink(email: string) {
     const user = await this.userService.findUserByEmail(email);
-    if (!user) throw new NotFoundException('User not found');
+    if (!user?.password) throw new NotFoundException('User not found');
 
-    const resetSecret = this.configService.get('JWT_SECRET') + user.password;
-    console.log(resetSecret)
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    if (!jwtSecret) throw new Error('JWT_SECRET is not configured');
 
-    const token = await this.jwtService.signAsync({ sub: user.id },
+    const resetSecret = jwtSecret + user.password;
+
+    const token = await this.jwtService.signAsync(
+      { sub: user.id },
       {
-        secret: this.configService.get('JWT_SECRET') + user.password,
+        secret: resetSecret,
         expiresIn: '15m',
       },
     );
@@ -147,24 +181,27 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const decoded = this.jwtService.decode(token) as { sub: number }
-    if (!decoded?.sub) throw new UnauthorizedException('Invalid reset token')
+    const decoded =
+      this.jwtService.decode<Pick<AccessTokenPayload, 'sub'>>(token);
+    if (typeof decoded?.sub !== 'number')
+      throw new UnauthorizedException('Invalid reset token');
 
-    const user = await this.userService.findUserByID(decoded.sub)
-    if (!user) throw new UnauthorizedException('Invalid reset token')
+    const user = await this.userService.findUserByID(decoded.sub);
+    if (!user?.password) throw new UnauthorizedException('Invalid reset token');
 
-    console.log(token)
-    const resetSecret = this.configService.get('JWT_SECRET') + user.password;
-    console.log(resetSecret)
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    if (!jwtSecret) throw new Error('JWT_SECRET is not configured');
+
+    const resetSecret = jwtSecret + user.password;
 
     try {
       await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get('JWT_SECRET') + user.password,
+        secret: resetSecret,
       });
     } catch {
       throw new UnauthorizedException('Invalid or expired reset token');
     }
 
-    return await this.userService.updatePassword(user.id, newPassword)
+    return this.userService.updatePassword(user.id, newPassword);
   }
 }

@@ -1,5 +1,4 @@
-
 export type JournalSuggestion = {
-    type: 'sentence_starter';
-    text: string;
+  type: 'sentence_starter';
+  text: string;
 };

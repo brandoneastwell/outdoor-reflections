@@ -1,4 +1,4 @@
-import {Inject, Injectable, Logger} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Transporter } from 'nodemailer';
 import { MAIL_TRANSPORTER } from './mail.constants';
@@ -22,7 +22,7 @@ export class MailService {
       .replace(/\/$/, '');
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${encodeURIComponent(resetToken)}`;
 
-    this.logger.log('Sending password reset email to ' + recipient)
+    this.logger.log('Sending password reset email to ' + recipient);
     await this.transporter.sendMail({
       from: this.configService.getOrThrow<string>('MAIL_FROM'),
       to: recipient,

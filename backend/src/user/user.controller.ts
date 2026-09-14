@@ -1,6 +1,6 @@
 import { UserService } from './user.service';
-import { Controller, Get, Req, Res } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { Controller, Get, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
 
 @Controller('users')

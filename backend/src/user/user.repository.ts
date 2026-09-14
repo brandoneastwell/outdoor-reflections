@@ -41,7 +41,7 @@ export class UserRepository {
         data: { email },
       });
 
-      tx.authProvider.create({
+      await tx.authProvider.create({
         data: {
           userId: user.id,
           provider: provider.name,

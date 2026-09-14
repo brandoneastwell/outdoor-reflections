@@ -8,7 +8,7 @@ import { DatabaseModule } from '../database/database.module';
 import { AuthRepository } from './auth.repository';
 import { AuthController } from './auth.controller';
 import { GoogleStrategy } from './google.strategy';
-import {JwtStrategy} from "./jwt.strategy";
+import { JwtStrategy } from './jwt.strategy';
 import { MailModule } from '../mail/mail.module';
 
 @Module({
@@ -23,7 +23,13 @@ import { MailModule } from '../mail/mail.module';
     MailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, AuthRepository, GoogleStrategy],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    AuthRepository,
+    GoogleStrategy,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -1,4 +1,4 @@
-import {BadRequestException, Injectable, Logger} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ReflectionsRepository } from './reflections.repository';
 import { ReflectionDto, SyncResponse } from './reflection.types';
 import { SafeUser } from '../user/user.types';
@@ -9,7 +9,8 @@ export class SyncService {
   private readonly logger = new Logger(SyncService.name);
 
   async syncEntries(entries: ReflectionDto[], user: SafeUser) {
-    if (!entries || entries.length === 0) throw new BadRequestException('No entries provided to sync');
+    if (!entries || entries.length === 0)
+      throw new BadRequestException('No entries provided to sync');
     this.logger.log(`Syncing ${entries.length} entries`);
 
     const start = process.hrtime();
@@ -19,8 +20,9 @@ export class SyncService {
     this.logger.log(
       `${results.entriesSynced.length} entries synced in ${diff[0]}s ${diff[1] / 1000000}ms`,
     );
-    results.entriesCreated &&
+    if (results.entriesCreated.length > 0) {
       this.logger.log(`${results.entriesCreated.length} entries created`);
+    }
 
     const syncResults: SyncResponse = {
       synced_entries: results.entriesSynced.concat(results.entriesCreated),

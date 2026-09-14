@@ -7,10 +7,12 @@ export const ReflectionSchema = z.object({
   content: z.array(z.string()),
   date: z.iso.datetime(),
   drawingPaths: z.array(
-    z.object({
-      path: z.string(),
-      color: z.string(),
-    }).optional(),
+    z
+      .object({
+        path: z.string(),
+        color: z.string(),
+      })
+      .optional(),
   ),
   lastSyncedAt: z.iso.datetime().optional(),
   lastEditedAt: z.iso.datetime(),
@@ -31,7 +33,7 @@ export type SyncResults = {
   entriesSynced: Reflection[];
   entriesCreated: Reflection[];
   entriesFailed: { entryId: string; error: string }[];
-}
+};
 
 export type DrawPath = {
   path: string;

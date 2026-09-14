@@ -4,8 +4,8 @@ import { z } from 'zod';
 const password = z.string().trim().min(7).max(32);
 const email = z.email().trim();
 
-export const EmailSchema = z.object({ email })
-export const PasswordSchema = z.object({ password })
+export const EmailSchema = z.object({ email });
+export const PasswordSchema = z.object({ password });
 
 export const CredentialsSchema = z
   .object(
@@ -18,8 +18,8 @@ export const CredentialsSchema = z
   .required();
 
 const ResetPasswordSchema = z.object({
-    token: z.string().min(1),
-    password,
+  token: z.string().min(1),
+  password,
 });
 
 export class ResetPasswordDto extends createZodDto(ResetPasswordSchema) {}
