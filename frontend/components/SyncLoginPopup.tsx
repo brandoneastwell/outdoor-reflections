@@ -14,7 +14,7 @@ export default function SyncLoginPopup({ open, onDismiss }: SyncLoginPopupProps)
     if (!open) return null;
 
     return (
-        <motion.div variants={popupVariant} initial="hidden" animate="visible" exit="exit"
+        <motion.div variants={popupVariant} initial="initial" animate="visible" exit="exit"
             className="fixed inset-x-3 bottom-6 z-[60] flex justify-center font-mono sm:bottom-8">
             <div className="w-full max-w-md rounded-2xl p-4 border-white/40 bg-rose/20 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10">
                 <p className="text-sm">
