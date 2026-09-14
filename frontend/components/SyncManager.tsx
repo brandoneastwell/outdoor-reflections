@@ -1,6 +1,5 @@
 "use client"
 import {useEffect} from "react";
-import {syncPendingEntries} from "@/lib/api/reflections";
 import {useAuth} from "@/lib/context/auth";
 
 export default function SyncManager() {
@@ -8,7 +7,7 @@ export default function SyncManager() {
 
     async function syncEntries() {
         try {
-            await syncPendingEntries();
+            await user.syncPendingEntries();
         } catch (error) {
             const res = await user.refresh()
             if (!res.ok) {
@@ -17,7 +16,7 @@ export default function SyncManager() {
             }
 
             try {
-                await syncPendingEntries();
+                await user.syncPendingEntries();
             } catch (error) {
                 console.error(error);
             }

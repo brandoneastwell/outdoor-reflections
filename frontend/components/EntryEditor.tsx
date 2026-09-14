@@ -10,7 +10,6 @@ import TextArea from "@/components/TextArea";
 import EntrySyncStatus from "@/components/EntrySyncStatus";
 import BarItem from "@/components/BarItem";
 import {SVG_PATHS} from "@/constants/svgPaths";
-import {syncPendingEntries} from "@/lib/api/reflections";
 import SyncLoginPopup from "@/components/SyncLoginPopup";
 import {useAuth} from "@/lib/context/auth";
 
@@ -67,7 +66,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
             let syncedEntries;
 
             try {
-                syncedEntries = await syncPendingEntries();
+                syncedEntries = await user.syncPendingEntries();
             } catch (error) {
                 if (error instanceof Error && error.message === "Unauthorized") {
                     const res = await user.refresh()
@@ -78,7 +77,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     }
 
                     try {
-                        syncedEntries = await syncPendingEntries();
+                        syncedEntries = await user.syncPendingEntries();
                     } catch (error) {
                         console.error(error);
                     }

@@ -6,7 +6,6 @@ import {useState} from "react";
 import {User, UserSchema} from "@/types/userTypes";
 import {Providers} from "@/types/authTypes";
 import {useRouter} from "next/navigation";
-import {syncPendingEntries} from "@/lib/api/reflections";
 import Link from "next/link";
 import {useAuth} from "@/lib/context/auth";
 
@@ -44,7 +43,7 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
             if (isSigningIn) res = await user.login(credentials);
             else res = await user.createAccount(credentials);
             if (res.message) setMessage(res.message)
-            await syncPendingEntries();
+            await user.syncPendingEntries();
         } catch (error) {
             if (error instanceof Error && error.message === "Failed to sync entries")
                 console.error(error);

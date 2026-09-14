@@ -6,6 +6,8 @@ import {useRouter} from "next/navigation";
 import {readJsonError} from "@/lib/api/readResponse";
 import {User} from "@/types/userTypes";
 import type {Providers} from "@/types/authTypes";
+import {SyncResponse} from "@/types/entryTypes";
+import Database from "@/lib/database";
 
 type AuthContextType = {
     userId: number | null;
@@ -15,6 +17,7 @@ type AuthContextType = {
     refresh: () => any;
     loginWithProvider: (provider: Providers) => void;
     createAccount: (user: User) => any;
+    syncPendingEntries: () => Promise<SyncResponse | undefined>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -114,8 +117,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return data;
     }
 
+    async function syncPendingEntries(): Promise<SyncResponse | undefined> {
+        if (!userId) throw new Error("Logged out user cannot sync entries");
+
+        const db = new Database();
+        const entries = await db.getAll('reflections')
+        if (!entries) return;
+
+        const entriesToSync = entries.filter(entry => entry.syncStatus === "pending" && entry.userId === userId)
+        console.log(entriesToSync)
+
+        const res = await fetch(`${API_URL}/reflection/sync`, {
+            credentials: "include",
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(entriesToSync)
+        })
+
+        if (!res.ok) {
+            if (res.status === 401) {
+                throw new Error("Unauthorized")
+            }
+            throw new Error("Failed to sync entries")
+        }
+        const results: SyncResponse = await res.json()
+        console.log(results)
+        return results
+    }
+
     return (
-        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh, loginWithProvider, createAccount }}>
+        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh, loginWithProvider, createAccount, syncPendingEntries }}>
             {children}
         </AuthContext.Provider>
     );
