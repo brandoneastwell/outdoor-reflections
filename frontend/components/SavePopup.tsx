@@ -52,7 +52,7 @@ export default function SavePopup() {
             );
 
             setLocalEntries([]);
-            router.push("/entries");
+            router.refresh();
         } finally {
             setSaving(false);
         }

@@ -53,7 +53,7 @@ export default function TopBar() {
             if (isCurrentEntryEmpty === true) return router.refresh();
         }
 
-        const emptyEntry = await createEmptyEntry();
+        const emptyEntry = await createEmptyEntry(user.userId);
         router.push(`/entry/${emptyEntry.id}`);
     }
 

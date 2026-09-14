@@ -122,13 +122,13 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
 
     const drawUndo = () => {
         if (entry.drawingPaths.length === 0) return;
-        setEntry((prevEntry: Entry) => ({...prevEntry, drawings: prevEntry.drawingPaths.slice(0, -1)}));
+        setEntry((prevEntry: Entry) => ({...prevEntry, drawingPaths: prevEntry.drawingPaths.slice(0, -1)}));
         setDrawHistory((prevHistory: DrawPath[]) => [...prevHistory, entry.drawingPaths[entry.drawingPaths.length - 1]]);
     }
 
     const drawRedo = () => {
         if (drawHistory.length === 0) return;
-        setEntry((prevEntry: Entry) => ({...prevEntry, drawings: [...prevEntry.drawingPaths, drawHistory[drawHistory.length - 1]]}));
+        setEntry((prevEntry: Entry) => ({...prevEntry, drawingPaths: [...prevEntry.drawingPaths, drawHistory[drawHistory.length - 1]]}));
         setDrawHistory((prevHistory: DrawPath[]) => prevHistory.slice(0, -1));
     }
 
