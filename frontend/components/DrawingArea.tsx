@@ -28,7 +28,7 @@ export default function DrawingArea({ focus }: { focus: boolean }) {
         if (event.button !== 0) return;
 
         const point = relativeCoordinates(event);
-        if (point) setPoints((prevLines: any) => [...prevLines, point]);
+        if (point) setPoints((prevLines: number[][]) => [...prevLines, point]);
         setIsDrawing(true);
     };
 
@@ -37,7 +37,7 @@ export default function DrawingArea({ focus }: { focus: boolean }) {
 
         const point = relativeCoordinates(event);
         if (point) {
-            setPoints((prevLines: any) => [...prevLines, point]);
+            setPoints((prevLines: number[][]) => [...prevLines, point]);
         }
     };
 

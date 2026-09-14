@@ -1,7 +1,7 @@
 "use client"
 import {useEffect, useRef, useState} from "react";
 import {EditMode} from "@/types/customTypes";
-import {DrawPath, Entry} from "@/types/entryTypes";
+import {DrawPath, Entry, SyncStatus} from "@/types/entryTypes";
 import {EntryContext} from "@/utils/entryContext";
 import Database from "../lib/database";
 import DatePicker from "@/components/DatePicker";
@@ -30,6 +30,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [entry, setEntry] = useState<Entry>(initEntry);
     const [editorScale, setEditorScale] = useState(1);
     const [syncPopupVisible, setSyncPopupVisible] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<SyncStatus | "syncing">(initEntry.syncStatus ? "synced" : "pending");
     const user = useAuth()
 
     const isFirstRender = useRef(true);
@@ -40,6 +41,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
         entry.content,
         entry.date,
         entry.drawingPaths,
+        entry.id
     ].join("|");
 
     useEffect(() => {
@@ -59,10 +61,12 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
             const entryToSave: Entry = {...latestEntryRef.current, syncStatus: "pending", lastEditedAt: new Date().toISOString()};
             db.saveToLocalDB(entryToSave, "reflections");
             setEntry(entryToSave);
+            syncStatus !== "syncing" && setSyncStatus("pending");
         }, 1000);
 
         const syncTimeout = setTimeout(async () => {
             if (entry.syncStatus === "synced") return;
+            setSyncStatus("syncing");
             let syncedEntries;
 
             try {
@@ -82,13 +86,14 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                         console.error(error);
                     }
                 }
-                console.error(error);
+            } finally {
+                if (syncedEntries && syncedEntries.synced_entries.find((cur) => cur.id === entry.id)) {
+                    setEntry((prevEntry: Entry) => ({...prevEntry, syncStatus: "synced"}));
+                    setSyncStatus("synced");
+                }
+                else setSyncStatus("pending");
             }
-
-            if (syncedEntries && syncedEntries.synced_entries.find((cur) => cur.id === entry.id)) {
-                setEntry((prevEntry: Entry) => ({...prevEntry, sync_status: "synced"}));
-            }
-        }, 10000);
+        }, 15000);
 
         return () => {
             clearTimeout(saveTimeout);
@@ -175,7 +180,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     <BarItem iconSize={22} svgPaths={SVG_PATHS.reverseIcon} label={"undo drawing tool"} onClick={() => drawUndo()} />
                     <BarItem iconSize={22} svgPaths={SVG_PATHS.forwardIcon} label={"redo drawing tool"} onClick={() => drawRedo()} />
                     <BarItem iconSize={22} svgPaths={SVG_PATHS.drawIcon} label={"draw tool"} fill={mode === "drawing" ? "#ce796b" : "#000000"} onClick={() => setMode(mode === "drawing" ? "text" : "drawing")} />
-                    <EntrySyncStatus isEntrySynced={entry.syncStatus === "synced"} />
+                    <EntrySyncStatus syncStatus={syncStatus} />
                 </div>
             </div>
         </div>
