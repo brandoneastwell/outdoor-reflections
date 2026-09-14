@@ -12,6 +12,7 @@ import BarItem from "@/components/BarItem";
 import {SVG_PATHS} from "@/constants/svgPaths";
 import {syncPendingEntries} from "@/lib/api/reflections";
 import SyncLoginPopup from "@/components/SyncLoginPopup";
+import {useAuth} from "@/lib/context/auth";
 
 const db = new Database();
 
@@ -30,6 +31,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [entry, setEntry] = useState<Entry>(initEntry);
     const [editorScale, setEditorScale] = useState(1);
     const [syncPopupVisible, setSyncPopupVisible] = useState(false);
+    const user = useAuth()
 
     const isFirstRender = useRef(true);
     const editorAreaRef = useRef<HTMLDivElement | null>(null);
@@ -68,9 +70,18 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                 syncedEntries = await syncPendingEntries();
             } catch (error) {
                 if (error instanceof Error && error.message === "Unauthorized") {
-                    console.warn("Unauthorized to sync entries");
-                    setSyncPopupVisible(true);
-                    return;
+                    const res = await user.refresh()
+                    if (!res.ok) {
+                        console.warn("Unauthorized to sync entries");
+                        setSyncPopupVisible(true);
+                        return;
+                    }
+
+                    try {
+                        syncedEntries = await syncPendingEntries();
+                    } catch (error) {
+                        console.error(error);
+                    }
                 }
                 console.error(error);
             }
