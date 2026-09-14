@@ -1,4 +1,1 @@
-export type ApiResponse = {
-    error?: string,
-    data?: any,
-}
+export type ApiResponse = { statusCode: number, message: string }

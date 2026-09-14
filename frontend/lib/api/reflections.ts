@@ -16,7 +16,12 @@ export async function syncPendingEntries(): Promise<SyncResponse | undefined> {
         body: JSON.stringify(entriesToSync)
     })
 
-    if (!res.ok) throw new Error("Failed to sync entries")
+    if (!res.ok) {
+        if (res.status === 401) {
+            throw new Error("Unauthorized")
+        }
+        throw new Error("Failed to sync entries")
+    }
     const results: SyncResponse = await res.json()
     console.log(results)
     return results

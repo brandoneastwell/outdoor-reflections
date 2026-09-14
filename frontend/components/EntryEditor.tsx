@@ -11,6 +11,7 @@ import EntrySyncStatus from "@/components/EntrySyncStatus";
 import BarItem from "@/components/BarItem";
 import {SVG_PATHS} from "@/constants/svgPaths";
 import {syncPendingEntries} from "@/lib/api/reflections";
+import SyncLoginPopup from "@/components/SyncLoginPopup";
 
 const db = new Database();
 
@@ -28,6 +29,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [drawHistory, setDrawHistory] = useState<DrawPath[]>([]);
     const [entry, setEntry] = useState<Entry>(initEntry);
     const [editorScale, setEditorScale] = useState(1);
+    const [syncPopupVisible, setSyncPopupVisible] = useState(false);
 
     const isFirstRender = useRef(true);
     const editorAreaRef = useRef<HTMLDivElement | null>(null);
@@ -65,7 +67,12 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
             try {
                 syncedEntries = await syncPendingEntries();
             } catch (error) {
-                console.warn(error);
+                if (error instanceof Error && error.message === "Unauthorized") {
+                    console.warn("Unauthorized to sync entries");
+                    setSyncPopupVisible(true);
+                    return;
+                }
+                console.error(error);
             }
 
             if (syncedEntries && syncedEntries.synced_entries.find((cur) => cur.id === entry.id)) {
@@ -116,6 +123,9 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
 
     return (
         <div className="flex flex-col place-items-center aspect-3/4 w-full h-full origin-top">
+            {syncPopupVisible && (
+                <SyncLoginPopup open={syncPopupVisible} onDismiss={() => setSyncPopupVisible(false)}></SyncLoginPopup>
+            )}
             <input
                 value={entry.title}
                 onChange={(e) =>
