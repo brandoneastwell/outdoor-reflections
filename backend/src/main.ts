@@ -17,6 +17,7 @@ async function bootstrap() {
   app.enableCors({ origin: process.env.ORIGIN, credentials: true });
   app.use(cookieParser());
   app.useGlobalPipes(new ZodValidationPipe());
-  await app.listen(8000);
+  const port = process.env.PORT ?? 8000;
+  await app.listen(port, '0.0.0.0');
 }
 void bootstrap();

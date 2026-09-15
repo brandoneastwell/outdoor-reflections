@@ -1,4 +1,28 @@
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: outdoor-reflections-api
+    ports:
+      # Mac:Container
+      - "3001:3001"
+
+    env_file:
+      - .env
+
+    environment:
+      PORT: 3001
+
+      # IMPORTANT:
+      # "postgres" is the service name below.
+      # We don't use localhost because Nest is inside Docker.
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/outdoor_reflections_db
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:17
     container_name: postgres-db
@@ -20,6 +44,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   postgres-test:
     image: postgres:17
     container_name: postgres-db-test
@@ -34,7 +59,7 @@ services:
       - "5433:5432"
 
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_test_data:/var/lib/postgresql/data
 
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres -d outdoor_reflections_test_db" ]
@@ -44,3 +69,4 @@ services:
 
 volumes:
   postgres_data:
+  postgres_test_data:
