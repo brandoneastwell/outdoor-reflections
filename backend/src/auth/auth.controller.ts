@@ -17,7 +17,7 @@ import { JwtAuthGuard } from './jwt-auth-guard';
 import { CredentialsDto, EmailDto, ResetPasswordDto } from './auth.dto';
 import { SafeUser } from '../user/user.types';
 import { GoogleAuthGuard } from './google-auth-guard';
-import { setAuthTokenInCookies } from './helpers';
+import { getRefreshTokenFromCookie, setAuthTokenInCookies } from './helpers';
 
 @Controller('auth')
 export class AuthController {
@@ -33,7 +33,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {
-    const refreshToken: string = req.cookies['refresh_token'] as string;
+    const refreshToken = getRefreshTokenFromCookie(req);
     const authenticated = await this.authService.login(
       req.user as SafeUser,
       refreshToken,
@@ -48,11 +48,9 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   async register(@Body() credentials: CredentialsDto, @Res() res: Response) {
     const user: SafeUser = await this.authService.register(credentials);
-    const authenticated = await this.authService.login(user);
-    setAuthTokenInCookies(res, authenticated.token);
     return res
       .status(201)
-      .json({ message: 'Successfully registered', id: authenticated.userId });
+      .json({ message: 'Successfully registered', id: user.id });
   }
 
   @UseGuards(JwtAuthGuard)
@@ -77,7 +75,7 @@ export class AuthController {
 
   @Post('refresh')
   async refresh(@Res() res: Response, @Req() req: Request) {
-    const refreshToken: string = req.cookies['refresh_token'] as string;
+    const refreshToken = getRefreshTokenFromCookie(req);
     if (!refreshToken) throw new UnauthorizedException('User is not signed in');
     const accessToken = await this.authService.refresh(refreshToken);
     setAuthTokenInCookies(res, accessToken);
@@ -90,8 +88,16 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
-  googleCallback(@Req() req: Request) {
-    return this.authService.loginWithGoogle(req);
+  async googleCallback(@Req() req: Request, @Res() res: Response) {
+    const authenticated = await this.authService.loginWithGoogle(
+        req,
+        getRefreshTokenFromCookie(req)
+    );
+    setAuthTokenInCookies(res, authenticated.token);
+    return res.status(200).json({
+      message: 'Successfully logged in with Google',
+      id: authenticated.userId,
+    });
   }
 
   @Post('forgot-password')

@@ -25,3 +25,8 @@ export function getJWTFromCookie(req: Request): string | null {
   const accessToken: unknown = req.cookies?.['access_token'];
   return typeof accessToken === 'string' ? accessToken : null;
 }
+
+export function getRefreshTokenFromCookie(req: Request): string | undefined {
+  const refreshToken: unknown = req.cookies?.['refresh_token'];
+  return typeof refreshToken === 'string' ? refreshToken : undefined;
+}

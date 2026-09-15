@@ -90,19 +90,20 @@ export class AuthService {
     };
   }
 
-  async loginWithGoogle(req: { user?: unknown }) {
+  async loginWithGoogle(req: { user?: unknown }, refreshToken?: string) {
     if (!isGoogleUser(req.user))
       throw new UnauthorizedException('Invalid credentials');
 
-    const user = await this.userService.findUserByEmail(req.user.email);
-    if (user) return this.login({ email: user.email, id: user.id });
+    let user = await this.userService.findUserByEmail(req.user.email);
+    if (!user) {
+      const provider: LoginProvider = { id: req.user.googleId, name: 'google' };
+      user = await this.userService.createProviderUser(
+        req.user.email,
+        provider,
+      );
+    }
 
-    const provider: LoginProvider = { id: req.user.googleId, name: 'google' };
-    const newUser = await this.userService.createProviderUser(
-      req.user.email,
-      provider,
-    );
-    return this.login({ email: newUser.email, id: newUser.id });
+    return this.login({ email: user.email, id: user.id }, refreshToken);
   }
 
   async isRefreshTokenValid(refreshSessionId: string, token: string) {

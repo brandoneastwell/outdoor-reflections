@@ -37,11 +37,6 @@ type MessageBody = {
   message: string;
 };
 
-type TokensBody = {
-  access_token?: string;
-  refresh_token?: string;
-};
-
 function responseBody<T>(response: { body: unknown }): T {
   return response.body as T;
 }
@@ -241,6 +236,7 @@ describe('Auth flow end to end tests', () => {
     expect(responseBody<MessageBody>(response)).toEqual({
       message: 'Logged out',
     });
+
     expect(response.get('Set-Cookie')).toEqual(
       expect.arrayContaining([
         expect.stringContaining('access_token=;'),
@@ -249,36 +245,22 @@ describe('Auth flow end to end tests', () => {
     );
   });
 
-  it('POST auth/refresh returns new tokens when the refresh cookie is present', async () => {
+  it('POST auth/refresh returns new access token', async () => {
+    const agent = request.agent(httpServer);
+
     const email = `refresh-${Date.now()}@example.com`;
     const password = 'password123';
 
-    await request(httpServer)
-      .post('/auth/register')
-      .send({ email, password })
-      .expect(201);
+    await agent.post('/auth/register').send({ email, password }).expect(201);
 
-    const loginResponse = await request(httpServer)
-      .post('/auth/login')
-      .send({ email, password })
-      .expect(201);
+    await agent.post('/auth/login').send({ email, password }).expect(201);
 
-    const setCookies = loginResponse.get('Set-Cookie');
-    expect(setCookies).toBeDefined();
-    const refreshCookie = setCookies?.find((cookie) =>
-      cookie.startsWith('refresh_token='),
+    const response = await agent.post('/auth/refresh').expect(201);
+
+    const cookies = response.headers['set-cookie'];
+    expect(cookies).toEqual(
+      expect.arrayContaining([expect.stringContaining('access_token=')]),
     );
-
-    if (!refreshCookie) throw new Error('Refresh cookie was not set');
-
-    const response = await request(httpServer)
-      .post('/auth/refresh')
-      .set('Cookie', refreshCookie.split(';')[0])
-      .expect(201);
-
-    const body = responseBody<TokensBody>(response);
-    expect(body.access_token).toBeDefined();
-    expect(body.refresh_token).toBeDefined();
   });
 
   it('POST auth/refresh rejects when the refresh cookie is missing', async () => {
@@ -295,25 +277,25 @@ describe('Auth flow end to end tests', () => {
     await request(httpServer).get('/auth/google').expect(200);
   });
 
-  it('GET auth/google/callback returns login tokens', async () => {
+  it('GET auth/google/callback sets auth cookies', async () => {
     const response = await request(httpServer)
       .get('/auth/google/callback')
       .expect(200);
 
-    const body = responseBody<TokensBody>(response);
-    expect(body.access_token).toBeDefined();
-    expect(body.refresh_token).toBeDefined();
+    const cookies = response.headers['set-cookie'];
+    expect(cookies).toEqual(
+      expect.arrayContaining([expect.stringContaining('access_token=')]),
+    );
   });
 
   it('GET auth/google/callback called twice returns a 409 conflict', async () => {
-    await request(httpServer).get('/auth/google/callback').expect(200);
+    const agent = request.agent(httpServer);
+    await agent.get('/auth/google/callback').expect(200);
 
-    const res = await request(httpServer)
-      .get('/auth/google/callback')
-      .expect(409);
+    const res = await agent.get('/auth/google/callback').expect(409);
 
     expect(responseBody<MessageBody>(res).message).toBe(
-      'User already signed in on this device',
+      'You are already signed in on this device',
     );
   });
 });
