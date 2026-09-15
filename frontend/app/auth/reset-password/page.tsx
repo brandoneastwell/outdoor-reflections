@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState} from "react";
+import {Suspense, useEffect, useState} from "react";
 import {Button} from "@/components/ui/button";
 import DrawIcon from "@/components/DrawIcon";
 import {SVG_PATHS} from "@/constants/svgPaths";
@@ -8,7 +8,7 @@ import {resetPassword} from "@/lib/api/auth";
 import {PasswordSchema} from "@/types/userTypes";
 import {useRouter, useSearchParams} from "next/navigation";
 
-export default function Page() {
+function ResetPasswordForm() {
     const searchParams = useSearchParams();
     const [token] = useState<string | null>(() => searchParams.get("token"));
     const [firstPassword, setFirstPassword] = useState<string>("");
@@ -100,5 +100,13 @@ export default function Page() {
                 <a href="/auth" className="mt-2 text-sm text-rose">Back to Login</a>
             </div>
         </div>
+    )
+}
+
+export default function Page() {
+    return (
+        <Suspense fallback={null}>
+            <ResetPasswordForm />
+        </Suspense>
     )
 }

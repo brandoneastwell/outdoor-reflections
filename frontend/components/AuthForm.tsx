@@ -41,15 +41,18 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
         try {
             let res;
             if (isSigningIn) res = await user.login(credentials);
-            else res = await user.createAccount(credentials);
+            else {
+                res = await user.createAccount(credentials);
+                setIsSigningIn(true);
+            }
             if (res.message) setMessage(res.message)
             await user.syncPendingEntries();
+            router.push("/entries");
         } catch (error) {
             if (error instanceof Error && error.message === "Failed to sync entries")
                 console.error(error);
             else setError(error instanceof Error ? error.message : "Unable to sign in");
         } finally {
-            router.push("/entries");
             setIsSubmitting(false);
         }
     }
