@@ -141,10 +141,10 @@ describe('AuthService integration', () => {
     if (!createdUser) throw new Error('Registered user was not found');
     const safeUser = { id: createdUser.id, email: createdUser.email };
 
-    await authService.login(safeUser);
+    const { token } = await authService.login(safeUser);
 
-    await expect(authService.login(safeUser)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      authService.login(safeUser, token.refresh_token),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

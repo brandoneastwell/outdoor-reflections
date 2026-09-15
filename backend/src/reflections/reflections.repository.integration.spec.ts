@@ -1,5 +1,5 @@
 import { PrismaService } from '../database/prisma.service';
-import { Test } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ReflectionsRepository } from './reflections.repository';
 import { DatabaseModule } from '../database/database.module';
 import { randomUUID } from 'node:crypto';
@@ -7,6 +7,7 @@ import { ReflectionDto } from './reflection.types';
 import { ConfigModule } from '@nestjs/config';
 
 describe('ReflectionsRepository', () => {
+  let app: TestingModule;
   let reflectionRepository: ReflectionsRepository;
   let prisma: PrismaService;
 
@@ -14,12 +15,7 @@ describe('ReflectionsRepository', () => {
   let testUserID: number;
 
   beforeAll(async () => {
-    prisma = new PrismaService();
-    await prisma.$connect();
-  });
-
-  beforeEach(async () => {
-    const app = await Test.createTestingModule({
+    app = await Test.createTestingModule({
       imports: [
         DatabaseModule,
         ConfigModule.forRoot({
@@ -32,7 +28,9 @@ describe('ReflectionsRepository', () => {
 
     reflectionRepository = app.get(ReflectionsRepository);
     prisma = app.get(PrismaService);
+  });
 
+  beforeEach(async () => {
     const res = await prisma.userAccount.upsert({
       create: testData,
       update: testData,
@@ -46,7 +44,7 @@ describe('ReflectionsRepository', () => {
     await prisma.userAccount.delete({
       where: { id: testUserID },
     });
-    await prisma.$disconnect();
+    await app.close();
   });
 
   it('should create a new reflections entry in reflections table', async () => {

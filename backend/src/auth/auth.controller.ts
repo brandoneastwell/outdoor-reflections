@@ -90,8 +90,8 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const authenticated = await this.authService.loginWithGoogle(
-        req,
-        getRefreshTokenFromCookie(req)
+      req,
+      getRefreshTokenFromCookie(req),
     );
     setAuthTokenInCookies(res, authenticated.token);
     return res.status(200).json({
