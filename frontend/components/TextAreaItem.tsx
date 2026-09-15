@@ -1,9 +1,11 @@
 "use client"
 
-import {AnimatePresence, motion, Reorder, useDragControls} from "motion/react";
-import React, {Dispatch, SetStateAction, useRef} from "react";
+import {motion, Reorder, useDragControls} from "motion/react";
+import React, {Dispatch, useRef} from "react";
 import type {RefObject} from "react";
 import {TextBox} from "@/types/customTypes";
+
+type StateSetter<T> = Dispatch<T | ((previousState: T) => T)>;
 
 interface TextAreaItemProps {
     line: TextBox;
@@ -11,7 +13,7 @@ interface TextAreaItemProps {
     container: RefObject<HTMLDivElement | null>;
     onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onChange: (id: string, value: string) => void;
-    onDrag: Dispatch<SetStateAction<TextBox | null>>
+    onDrag: StateSetter<TextBox | null>
     draggedLine: TextBox | null;
 }
 

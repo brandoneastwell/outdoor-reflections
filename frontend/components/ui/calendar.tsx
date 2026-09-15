@@ -40,6 +40,9 @@ function Calendar({
 }) {
   const defaultClassNames = getDefaultClassNames()
 
+  // @ts-ignore
+  // @ts-ignore
+  // @ts-ignore
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
