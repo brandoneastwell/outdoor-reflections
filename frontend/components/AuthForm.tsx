@@ -44,6 +44,8 @@ export default function AuthForm({ isSigningIn = true, setIsSigningIn = () => {}
             else {
                 res = await user.createAccount(credentials);
                 setIsSigningIn(true);
+                setEmail('')
+                setPassword('')
             }
             if (res.message) setMessage(res.message)
             await user.syncPendingEntries();
