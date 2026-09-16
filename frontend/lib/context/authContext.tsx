@@ -17,7 +17,7 @@ type AuthContextType = {
     refresh: () => Promise<Response>;
     loginWithProvider: (provider: Providers) => void;
     createAccount: (user: User) => Promise<{ message: string, id: number }>;
-    syncPendingEntries: () => Promise<SyncResponse | undefined>;
+    syncPendingEntries: (authenticatedUserId?: number) => Promise<SyncResponse | undefined>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 const user: { id: number, email: string } = await res.json();
                 setUserId(user.id);
-            } catch(error) {
+            } catch {
                 setUserId(null);
             }
         }
@@ -113,18 +113,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!res.ok) throw new Error(await readJsonError(res, "Unable to create account"));
         const data: { message: string, id: number } = await res.json();
-        setUserId(data.id);
         return data;
     }
 
-    async function syncPendingEntries(): Promise<SyncResponse | undefined> {
-        if (!userId) throw new Error("Logged out user cannot sync entries");
+    async function syncPendingEntries(authenticatedUserId = userId ?? undefined): Promise<SyncResponse | undefined> {
+        if (!authenticatedUserId) throw new Error("Logged out user cannot sync entries");
 
         const db = new Database();
         const entries = await db.getAll('reflections')
         if (!entries) return;
 
-        const entriesToSync = entries.filter(entry => entry.syncStatus === "pending" && entry.userId === userId)
+        const entriesToSync = entries.filter(entry => entry.syncStatus === "pending" && entry.userId === authenticatedUserId)
         console.log(entriesToSync)
 
         const res = await fetch(`${API_URL}/reflection/sync`, {
