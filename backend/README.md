@@ -31,21 +31,18 @@
 $ npm install
 ```
 
-Configure the SMTP transport and frontend URL used by password-reset emails:
+Configure the Mailtrap Email Sending API token, a sender address on your
+verified sending domain, and the frontend URL used by password-reset emails:
 
 ```dotenv
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-smtp-user
-SMTP_PASSWORD=your-smtp-password
-MAIL_FROM="Outdoor Reflections <no-reply@example.com>"
+SMTP_TOKEN=your-mailtrap-api-token
+MAIL_FROM="Outdoor Reflections <no-reply@your-verified-domain.com>"
 FRONTEND_URL=http://localhost:3000
 ```
 
-`SMTP_USER` and `SMTP_PASSWORD` can be omitted when the SMTP server does not
-require authentication. Use `SMTP_SECURE=true` for implicit TLS (usually port
-465); STARTTLS transports normally use `false`.
+The backend sends through Mailtrap's production SMTP endpoint. The token must
+have permission to send from the domain used by `MAIL_FROM`; sandbox SMTP
+credentials do not work with this transport.
 
 ## Compile and run the project
 

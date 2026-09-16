@@ -14,7 +14,7 @@ async function bootstrap() {
   });
 
   app.use(json({ limit: '10mb' }));
-  app.enableCors({ origin: process.env.ORIGIN, credentials: true });
+  app.enableCors({ origin: process.env.FRONTEND_URL, credentials: true });
   app.use(cookieParser());
   app.useGlobalPipes(new ZodValidationPipe());
   const port = process.env.PORT ?? 3001;

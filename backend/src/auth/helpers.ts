@@ -6,7 +6,7 @@ export function setAuthTokenInCookies(res: Response, token: Partial<Tokens>) {
     res.cookie('access_token', token.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none',
       path: '/',
     });
   }
@@ -15,7 +15,7 @@ export function setAuthTokenInCookies(res: Response, token: Partial<Tokens>) {
     res.cookie('refresh_token', token.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none',
       path: '/',
     });
   }

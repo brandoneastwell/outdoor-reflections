@@ -11,13 +11,16 @@ import { MailService } from './mail.service';
       provide: MAIL_TRANSPORTER,
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const user = configService.get<string>('SMTP_USER');
-        const pass = configService.get<string>('SMTP_PASS');
+        const token = configService.getOrThrow<string>('SMTP_TOKEN');
 
         return nodemailer.createTransport({
-          host: configService.getOrThrow<string>('SMTP_HOST'),
-          port: Number(configService.get<string>('SMTP_PORT') ?? 587),
-          auth: { user, pass },
+          host: 'live.smtp.mailtrap.io',
+          port: 587,
+          secure: false,
+          auth: {
+            user: 'api',
+            pass: token,
+          },
         });
       },
     },
