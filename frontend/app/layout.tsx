@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import TopBar from "@/components/TopBar";
 import SyncManager from "@/components/SyncManager";
 import Providers from "@/components/Providers";
+import { Analytics } from "@vercel/analytics/next"
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -24,6 +25,7 @@ export default function RootLayout({
       className={cn("h-full antialiased", "font-sans", inter.variable)}
     >
       <body className="min-h-full flex flex-col bg-[#F9F7F3]">
+      <Analytics />
         <Providers>
           <SyncManager />
           <TopBar />
