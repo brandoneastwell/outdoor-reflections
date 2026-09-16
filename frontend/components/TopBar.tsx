@@ -60,7 +60,7 @@ export default function TopBar() {
     if (pathname === "/") return;
 
     return (
-        <div className={"w-full my-5 h-20 place-items-center justify-center gap-1 text-lg"}>
+        <div className={"w-full my-5 h-20 flex flex-row place-items-center justify-center items-center gap-1 text-lg"}>
             <motion.div
                 layout
                 transition={{ layout: { duration: 0.22, ease: "easeOut" } }}

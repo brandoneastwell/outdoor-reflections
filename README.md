@@ -8,13 +8,7 @@ This repository contains **v0.1**, the first deployed release of Outdoor Reflect
 
 **Live app:** [outdoor-reflections.vercel.app](https://outdoor-reflections.vercel.app)
 
-![Outdoor Reflections entry editor on mobile](public/localhost_3000_entry_b47c140f-8a63-46b6-a03f-0ee8c932054f%28iPhone%2014%20Pro%20Max%29.png)
-
-## v0.1 at a glance
-
-| **1 second** | **15 seconds** | **10 minutes** | **7 days** | **15 minutes** | **48 tests** |
-| --- | --- | --- | --- | --- | --- |
-| Local autosave delay | Background sync delay | Access-token lifetime | Refresh-session lifetime | Password-reset expiry | Across 12 backend suites |
+![Outdoor Reflections entry editor on mobile](public/8414a7e6-d253-4af9-b68a-a7e24016c7ae.png)
 
 ## Technical highlights
 
@@ -134,3 +128,14 @@ Good starting points for exploring the implementation:
 ## v0.1 status
 
 This deployed release proves the central interaction: a reflection can begin offline as text and drawing, survive locally, and later become authenticated server data without interrupting the writing experience. Future iterations can build on that production foundation with richer conflict resolution, AI suggestions surfaced directly in the editor, broader PWA support, and deeper operational monitoring.
+
+## Future improvements
+
+- Integrate the existing Groq-powered sentence-starter service into the deployed editor experience.
+- Allow users to delete reflections locally and synchronize deletions with their account.
+- Add drag-and-drop photo uploads so reflections can combine writing, drawings and photography.
+
+## Known issues
+
+- Text blocks can shift or bounce while their content is being edited.
+- The drawing tool does not currently work in Safari.
