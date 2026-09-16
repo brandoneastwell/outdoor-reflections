@@ -4,21 +4,39 @@
 
 Outdoor Reflections combines a block-based writing space with a pressure-aware drawing canvas. Entries are saved locally first, remain available without a connection, and can be synchronized to an authenticated account when the network returns.
 
-This repository contains the first working version of the idea: **v0.1**. It is an active, local-development release rather than a production deployment, but the core editor, persistence, sync, authentication, and AI foundations are in place.
+This repository contains **v0.1**, the first deployed release of Outdoor Reflections. It delivers the core editor, offline persistence, synchronization, authentication and AI foundations as a working full-stack product.
+
+**Live app:** [outdoor-reflections.vercel.app](https://outdoor-reflections.vercel.app)
 
 ![Outdoor Reflections entry editor on mobile](public/localhost_3000_entry_b47c140f-8a63-46b6-a03f-0ee8c932054f%28iPhone%2014%20Pro%20Max%29.png)
 
-## v0.1 technical highlights
+## v0.1 at a glance
 
-| Highlight | What makes it interesting |
-| --- | --- |
-| **Local-first persistence** | IndexedDB is the immediate source of truth. Writing and drawing do not wait for the API, and every database connection is closed after its transaction so upgrades and DevTools operations are not left blocked. |
-| **Conflict-aware synchronization** | Entries carry `createdAt`, `lastEditedAt`, and sync state. The API validates each reflection, enforces ownership, creates missing records, and only applies an update when the browser copy is newer. |
-| **One mixed-media document** | Ordered text blocks and freehand SVG paths live in the same reflection model, so autosave and synchronization preserve the complete journal page rather than treating sketches as attachments. |
-| **Purpose-built drawing engine** | Pointer position and pressure are transformed into smooth, scalable SVG paths with `perfect-freehand`; strokes retain their colour and stay resolution independent. |
-| **Stateful, cookie-based authentication** | Local credentials and Google OAuth feed into short-lived access JWTs and refresh sessions. Refresh tokens are stored as hashes, delivered through `HttpOnly` cookies, and checked to prevent duplicate active sessions on a device. |
-| **AI with constrained output** | A Groq-backed intelligence service uses recent writing as context and structured JSON output to return three short sentence starters without inventing memories or writing the entry for the user. |
-| **Tests across real boundaries** | Unit, integration, repository, and end-to-end tests cover validation, PostgreSQL persistence, token refresh, cookie behaviour, duplicate sessions, sync outcomes, and service teardown. The current backend suite contains **48 passing tests**. |
+| **1 second** | **15 seconds** | **10 minutes** | **7 days** | **15 minutes** | **48 tests** |
+| --- | --- | --- | --- | --- | --- |
+| Local autosave delay | Background sync delay | Access-token lifetime | Refresh-session lifetime | Password-reset expiry | Across 12 backend suites |
+
+## Technical highlights
+
+### Frontend engineering
+
+- **Offline-first editing** — mixed text and drawing entries are written to IndexedDB after one second of inactivity, keeping the journal usable without a server or network connection.
+- **Pressure-aware SVG drawing** — browser pointer pressure is converted into smooth `perfect-freehand` strokes, while inverse SVG coordinate transforms keep input accurate as the editor scales.
+- **Responsive mixed-media workspace** — a `ResizeObserver` scales the fixed drawing coordinate system across mobile and desktop without distorting saved paths.
+- **Touch-friendly block editing** — writing is split into reorderable blocks with animated drag constraints and 150 ms long-press detection for deliberate movement on touchscreens.
+- **Resilient background sync** — the client tracks pending entries per user, reacts to connectivity changes, refreshes expired sessions and retries interrupted requests automatically.
+- **Guest-to-account continuity** — locally created entries can be claimed by a signed-in account and queued for synchronization without losing the user's existing work.
+- **Custom visual system** — the icon renderer samples each SVG path at roughly 100 positions, rebuilds it as a tapered freehand stroke and animates individual path segments for a consistent hand-drawn style.
+
+### Backend engineering
+
+- **Transactional synchronization** — the NestJS API validates every reflection, enforces ownership and compares edit timestamps so older offline data cannot overwrite newer server records.
+- **Partial-failure reporting** — each sync returns created, updated and failed counts, per-entry errors, execution time and a `SUCCESS`, `PARTIAL` or `FAILED` result instead of discarding an entire batch.
+- **Stateful authentication** — email/password and Google OAuth use 10-minute access tokens, seven-day refresh sessions, bcrypt-hashed refresh tokens and secure `HttpOnly` cookies.
+- **Revocable session model** — refresh tokens are linked to server-side UUID sessions, allowing validation without storing the raw credential and preventing duplicate active logins on one device.
+- **Password recovery by design** — 15-minute reset tokens are derived from the user's current password, so a successful password change automatically invalidates previously issued links; generic responses also reduce account-enumeration risk.
+- **Constrained AI output** — Groq structured responses produce exactly three sentence starters under 20 words, using earlier writing for themes while explicitly avoiding invented memories and copied content.
+- **Tests across real boundaries** — 48 passing tests across 12 unit, integration, repository and end-to-end suites cover PostgreSQL transactions, cookies, token refresh, OAuth callbacks, validation and partial sync failures.
 
 ## What the first version can do
 
@@ -48,23 +66,27 @@ flowchart LR
 
 The browser copy is deliberately written first. After one second of inactivity the editor saves a pending reflection locally; after a longer quiet period—or when connectivity changes—the sync flow sends pending entries belonging to the current user. The server returns per-request counts and a `SUCCESS`, `PARTIAL`, or `FAILED` result, and confirmed local entries are marked as synced.
 
-## Engineering decisions
+## Key engineering decisions
 
 ### Offline before accounts
 
-The editor works without making authentication or network availability a prerequisite for writing. IndexedDB keeps local and account-owned entries on the device, while `userId` prevents one signed-in user from seeing or synchronizing another user's local entries.
+Writing should not depend on authentication or network availability. IndexedDB is therefore the immediate source of truth, while `userId` separates guest and account-owned entries on the device. The browser can later move guest entries into an account and synchronize them without changing the editing experience.
 
-### Drawings as data
+### Drawings as application data
 
-Each stroke is stored as path data plus its colour. This keeps a reflection portable across IndexedDB, JSON requests, and PostgreSQL without rasterizing the page or losing drawing quality.
+Each stroke is stored as SVG path data plus its colour rather than as a raster image. A complete reflection—text, ordering and artwork—can therefore move through IndexedDB, JSON requests and PostgreSQL without losing drawing quality.
 
-### Sessions that can be invalidated
+### The newest valid edit wins
 
-An access token is intentionally short lived. Its companion refresh token includes a server-side session ID, and only a bcrypt hash is persisted. The server can therefore validate the browser cookie without storing the credential itself.
+Synchronization is more than a blind upsert. The API validates each payload, checks that an existing reflection belongs to the requesting user and compares `lastEditedAt` before applying an update. Mixed outcomes remain visible to the client through structured partial-success responses.
+
+### Sessions remain verifiable and revocable
+
+Access tokens are intentionally short lived. Each refresh token contains a server-side session ID, but only its bcrypt hash is persisted. The API can verify a browser session without storing the usable credential itself.
 
 ### Suggestions, not generated memories
 
-The intelligence layer is designed to help someone continue writing in their own voice. Its prompt limits output to short sentence starters, supplies earlier entries only as thematic context, and requests a defined JSON schema rather than accepting unstructured model text.
+The intelligence layer helps someone continue in their own voice rather than writing a journal entry for them. Previous entries are supplied only as thematic context, and a JSON schema constrains the model to short sentence starters.
 
 ## Stack
 
@@ -111,4 +133,4 @@ Good starting points for exploring the implementation:
 
 ## v0.1 status
 
-This release proves the central interaction: a reflection can begin offline as text and drawing, survive locally, and later become authenticated server data without interrupting the writing experience. The next iterations can build on that foundation with richer conflict resolution, surfaced AI suggestions in the editor, broader offline/PWA support, and production deployment hardening.
+This deployed release proves the central interaction: a reflection can begin offline as text and drawing, survive locally, and later become authenticated server data without interrupting the writing experience. Future iterations can build on that production foundation with richer conflict resolution, AI suggestions surfaced directly in the editor, broader PWA support, and deeper operational monitoring.
