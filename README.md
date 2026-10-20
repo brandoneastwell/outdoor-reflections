@@ -1,6 +1,6 @@
 # Outdoor Reflections
 
-> A quiet, offline-first journal for capturing time outdoors in words and sketches.
+> A offline-first journal for capturing time outdoors in words and sketches.
 
 Outdoor Reflections combines a block-based writing space with a pressure-aware drawing canvas. Entries are saved locally first, remain available without a connection, and can be synchronized to an authenticated account when the network returns.
 
@@ -131,7 +131,14 @@ This deployed release proves the central interaction: a reflection can begin off
 
 ## Future improvements
 
+- Rebrand the app to "Daily Reflections" and add a logo.
+- Add a daily tracker to track how many entries have been written for the week.
+- Improve the editor's responsiveness and performance.
+- Rewrite the text block editing and dragging responsiveness.
+- Add a "new reflection" button to the entry list.
+- Improve design of the entry list page.
 - Integrate the existing Groq-powered sentence-starter service into the deployed editor experience.
+- Update the intelligence layer to use RAG for more accurate contextual suggestions.
 - Allow users to delete reflections locally and synchronize deletions with their account.
 - Add drag-and-drop photo uploads so reflections can combine writing, drawings and photography.
 
