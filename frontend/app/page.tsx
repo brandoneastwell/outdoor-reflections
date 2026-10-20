@@ -89,9 +89,8 @@ export default function Home() {
 
       <section className={styles.hero}>
         <div className={styles.intro}>
-          <p className={styles.kicker}><span /> A journal for time outside</p>
           <h1>Keep the little<br />things you notice.</h1>
-          <p className={styles.subhead}>A quiet place for words and sketches from the paths, parks, and open air you want to remember.</p>
+          <p className={styles.subhead}>A journal for reflecting on your time in the wild, through sketches or text, available offline.</p>
           <div className={styles.actions}>
             <StartButton label="Begin a reflection" className={styles.primaryAction} />
             <Link href="/entries" className={styles.textAction}>Open my journal <span aria-hidden="true">→</span></Link>
@@ -107,11 +106,6 @@ export default function Home() {
       </section>
 
       <div className={styles.gardenBed}><Garden /></div>
-      <footer className={styles.footer}>
-        <p>Private on your device</p>
-        <p><span /> made for slower moments <span /></p>
-        <p>Write · draw · return</p>
-      </footer>
     </main>
   );
 }
