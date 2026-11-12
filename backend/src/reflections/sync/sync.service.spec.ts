@@ -1,10 +1,10 @@
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
-import { ReflectionsRepository } from './reflections.repository';
+import { ReflectionsRepository } from '../entries/reflections.repository';
 import { SyncService } from './sync.service';
-import { ReflectionDto } from './reflection.types';
-import type { SafeUser } from '../user/user.types';
+import { ReflectionDto } from '../entries/reflection.types';
+import type { SafeUser } from '../../user/user.types';
 
 describe('SyncService', () => {
   let syncService: SyncService;

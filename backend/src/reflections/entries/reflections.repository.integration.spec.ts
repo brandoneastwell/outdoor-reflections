@@ -1,7 +1,7 @@
-import { PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ReflectionsRepository } from './reflections.repository';
-import { DatabaseModule } from '../database/database.module';
+import { DatabaseModule } from '../../database/database.module';
 import { randomUUID } from 'node:crypto';
 import { ReflectionDto } from './reflection.types';
 import { ConfigModule } from '@nestjs/config';

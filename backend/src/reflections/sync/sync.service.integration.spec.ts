@@ -1,11 +1,11 @@
 import { Test, type TestingModule } from '@nestjs/testing';
-import { DatabaseModule } from '../database/database.module';
-import { PrismaService } from '../database/prisma.service';
-import { ReflectionsRepository } from './reflections.repository';
+import { DatabaseModule } from '../../database/database.module';
+import { PrismaService } from '../../database/prisma.service';
+import { ReflectionsRepository } from '../entries/reflections.repository';
 import { SyncService } from './sync.service';
-import { ReflectionDto, toReflectionDto } from './reflection.types';
+import { ReflectionDto, toReflectionDto } from '../entries/reflection.types';
 import { ConfigModule } from '@nestjs/config';
-import { seedExplicitReflections } from '../database/db.seed.helpers';
+import { seedExplicitReflections } from '../../database/db.seed.helpers';
 import { randomUUID } from 'node:crypto';
 
 describe('SyncService integration', () => {

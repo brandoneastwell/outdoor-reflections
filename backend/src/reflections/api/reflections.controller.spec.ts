@@ -1,12 +1,12 @@
 import { Test } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
 import { ReflectionsController } from './reflections.controller';
-import { ReflectionsService } from './reflections.service';
-import { SyncService } from './sync.service';
-import { ReflectionDto } from './reflection.types';
+import { ReflectionsService } from '../entries/reflections.service';
+import { SyncService } from '../sync/sync.service';
+import { ReflectionDto } from '../entries/reflection.types';
 import { randomUUID } from 'node:crypto';
 import type { Request } from 'express';
-import { IntelligenceService } from './intelligence.service';
+import { IntelligenceService } from '../intelligence/intelligence.service';
 
 describe('ReflectionsController', () => {
   let reflectionsController: ReflectionsController;

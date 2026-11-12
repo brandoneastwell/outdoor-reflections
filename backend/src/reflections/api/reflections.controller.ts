@@ -7,13 +7,13 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ReflectionsService } from './reflections.service';
+import { ReflectionsService } from '../entries/reflections.service';
 import type { Request } from 'express';
-import { SyncService } from './sync.service';
-import { JwtAuthGuard } from '../auth/jwt-auth-guard';
-import type { ReflectionDto } from './reflection.types';
-import { SafeUser } from '../user/user.types';
-import { IntelligenceService } from './intelligence.service';
+import { SyncService } from '../sync/sync.service';
+import { JwtAuthGuard } from '../../auth/jwt-auth-guard';
+import type { ReflectionDto } from '../entries/reflection.types';
+import { SafeUser } from '../../user/user.types';
+import { IntelligenceService } from '../intelligence/intelligence.service';
 
 @Controller('reflection')
 export class ReflectionsController {

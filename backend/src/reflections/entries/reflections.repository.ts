@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../database/prisma.service';
+import { PrismaService } from '../../database/prisma.service';
 import {
   ReflectionDto,
   ReflectionSchema,
   SyncResults,
   toReflectionDto,
 } from './reflection.types';
-import { Prisma } from '../../generated/prisma/client';
+import { Prisma } from '../../../generated/prisma/client';
 
 @Injectable()
 export class ReflectionsRepository {

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { ReflectionsRepository } from './reflections.repository';
-import { ReflectionDto, SyncResponse } from './reflection.types';
-import { SafeUser } from '../user/user.types';
+import { ReflectionsRepository } from '../entries/reflections.repository';
+import { ReflectionDto, SyncResponse } from '../entries/reflection.types';
+import { SafeUser } from '../../user/user.types';
 
 @Injectable()
 export class SyncService {

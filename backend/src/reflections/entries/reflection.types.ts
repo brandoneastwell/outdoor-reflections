@@ -1,4 +1,4 @@
-import type { Reflection } from '../../generated/prisma/client';
+import type { Reflection } from '../../../generated/prisma/client';
 import { z } from 'zod';
 
 export const ReflectionSchema = z.object({
