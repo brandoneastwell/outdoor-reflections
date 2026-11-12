@@ -72,6 +72,7 @@ class GroqService:
         current_content: str,
         previous_entries: list[str],
     ) -> list[str]:
+
         journal_data = json.dumps(
             {
                 "current_content": current_content,

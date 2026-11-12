@@ -5,7 +5,7 @@ import { DatabaseModule } from '../database/database.module';
 import { ReflectionsRepository } from './reflections.repository';
 import { SyncService } from './sync.service';
 import { IntelligenceService } from './intelligence.service';
-import { GroqProvider } from './groq.provider';
+import { ReflectionsAiClient } from './reflections-ai.client';
 
 @Module({
   imports: [DatabaseModule],
@@ -15,7 +15,7 @@ import { GroqProvider } from './groq.provider';
     ReflectionsRepository,
     SyncService,
     IntelligenceService,
-    GroqProvider,
+    ReflectionsAiClient,
   ],
   exports: [ReflectionsService, SyncService, IntelligenceService],
 })
