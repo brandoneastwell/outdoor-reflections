@@ -1,5 +1,5 @@
 "use client"
-import {useEffect, useRef, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 import {EditMode} from "@/types/customTypes";
 import {DrawPath, Entry, SyncStatus} from "@/types/entryTypes";
 import {EntryContext} from "@/utils/entryContext";
@@ -12,6 +12,8 @@ import BarItem from "@/components/BarItem";
 import {SVG_PATHS} from "@/constants/svgPaths";
 import SyncLoginPopup from "@/components/SyncLoginPopup";
 import {useAuth} from "@/lib/context/auth";
+import {reflectionsAiManager} from "@/lib/ai/reflectionsAiManager";
+import type {EntryAiState, JournalSuggestion} from "@/types/intelligenceTypes";
 
 const db = new Database();
 
@@ -31,11 +33,17 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [editorScale, setEditorScale] = useState(1);
     const [syncPopupVisible, setSyncPopupVisible] = useState(false);
     const [syncStatus, setSyncStatus] = useState<SyncStatus | "syncing">(initEntry.syncStatus ? "synced" : "pending");
+    const [aiState, setAiState] = useState<EntryAiState>({
+        status: "idle",
+        suggestions: [],
+        error: null,
+    });
     const user = useAuth()
 
     const isFirstRender = useRef(true);
     const editorAreaRef = useRef<HTMLDivElement | null>(null);
     const latestEntryRef = useRef<Entry>(entry);
+    const aiRequestRef = useRef<AbortController | null>(null);
     const editableEntryKey = [
         entry.title,
         entry.content,
@@ -47,6 +55,70 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     useEffect(() => {
         latestEntryRef.current = entry;
     }, [entry]);
+
+    useEffect(() => {
+        return () => aiRequestRef.current?.abort();
+    }, [entry.id]);
+
+    const clearAiSuggestions = useCallback(() => {
+        aiRequestRef.current?.abort();
+        aiRequestRef.current = null;
+        setAiState({
+            status: "idle",
+            suggestions: [],
+            error: null,
+        });
+    }, []);
+
+    const requestSentenceStarters = useCallback(async (
+        currentContent: string,
+        recentContent: string[],
+    ): Promise<JournalSuggestion[]> => {
+        aiRequestRef.current?.abort();
+
+        const requestController = new AbortController();
+        aiRequestRef.current = requestController;
+        setAiState({
+            status: "loading",
+            suggestions: [],
+            error: null,
+        });
+
+        try {
+            const suggestions = await reflectionsAiManager.generateSentenceStarters(
+                entry.id,
+                {currentContent, recentContent},
+                requestController.signal,
+            );
+
+            if (!requestController.signal.aborted) {
+                setAiState({
+                    status: "ready",
+                    suggestions,
+                    error: null,
+                });
+            }
+
+            return suggestions;
+        } catch (error) {
+            if (requestController.signal.aborted) return [];
+
+            const message = error instanceof Error
+                ? error.message
+                : "AI sentence starter service is unavailable";
+
+            setAiState({
+                status: "unavailable",
+                suggestions: [],
+                error: message,
+            });
+            return [];
+        } finally {
+            if (aiRequestRef.current === requestController) {
+                aiRequestRef.current = null;
+            }
+        }
+    }, [entry.id]);
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -156,7 +228,17 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                 className="max-w-full bg-transparent text-center outline-none text-3xl sm:text-5xl md:text-6xl font-semibold font-flower tracking-wider text-black placeholder-black"
             />
             <div className="flex flex-col grow w-full max-w-2xl h-full gap-2 px-3 pb-3 pt-2 rounded-2xl mt-4">
-                <EntryContext value={{entry, setEntry, drawHistory, drawColor, setDrawColor, editorScale}}>
+                <EntryContext value={{
+                    entry,
+                    setEntry,
+                    drawHistory,
+                    drawColor,
+                    setDrawColor,
+                    editorScale,
+                    aiState,
+                    requestSentenceStarters,
+                    clearAiSuggestions,
+                }}>
                     <div className="flex flex-row justify-between text-lg md:text-3xl text-rose tracking-wider font-flower">
                         <DatePicker />
                     </div>
