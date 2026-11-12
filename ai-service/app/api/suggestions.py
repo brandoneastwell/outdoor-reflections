@@ -26,7 +26,6 @@ SentenceStarterServiceDependency = Annotated[
     response_model=SentenceStartersResponse,
     status_code=status.HTTP_200_OK,
 )
-
 async def generate_sentence_starters(
     request: SentenceStartersRequest,
     service: SentenceStarterServiceDependency,

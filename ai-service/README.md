@@ -18,6 +18,16 @@ Check the service from another terminal:
 curl http://localhost:8000/health
 ```
 
+Set the Groq configuration in `backend/.env` before requesting sentence
+starters:
+
+```dotenv
+GROQ_API_KEY=your-groq-api-key
+GROQ_MODEL=openai/gpt-oss-20b
+```
+
+`GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`.
+
 ## Run directly with Python
 
 Python 3.12 or newer is required.

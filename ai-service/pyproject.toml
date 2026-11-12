@@ -9,6 +9,7 @@ description = "AI microservice for Outdoor Reflections"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.162.4",
+    "groq==1.7.0",
     "uvicorn[standard]==0.52.4",
 ]
 

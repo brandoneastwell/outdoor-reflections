@@ -5,7 +5,10 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.suggestions import SentenceStartersRequest
-from app.services.suggestions import get_sentence_starter_service
+from app.services.suggestions import (
+    SentenceStarterService,
+    get_sentence_starter_service,
+)
 
 
 client = TestClient(app)
@@ -86,13 +89,19 @@ def test_previous_entries_are_required() -> None:
 
 
 def test_returns_service_unavailable_without_a_provider() -> None:
-    response = client.post(
-        "/v1/suggestions/sentence-starters",
-        json={
-            "current_content": "",
-            "previous_entries": ["A previous outdoor reflection."],
-        },
+    app.dependency_overrides[get_sentence_starter_service] = (
+        lambda: SentenceStarterService()
     )
+    try:
+        response = client.post(
+            "/v1/suggestions/sentence-starters",
+            json={
+                "current_content": "",
+                "previous_entries": ["A previous outdoor reflection."],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
 
     assert response.status_code == 503
     assert response.json() == {
