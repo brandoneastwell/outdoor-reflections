@@ -189,6 +189,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
 
                 const previousContent = storedEntries
                     .filter((storedEntry) => storedEntry.id !== entry.id)
+                    .filter((storedEntry) => storedEntry.content.length > 0)
                     .sort((first, second) => (
                         new Date(second.lastEditedAt).getTime() - new Date(first.lastEditedAt).getTime()
                     ))
