@@ -13,6 +13,8 @@ interface TextAreaItemProps {
     container: RefObject<HTMLDivElement | null>;
     onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onChange: (id: string, value: string) => void;
+    onFocus: () => void;
+    onBlur: () => void;
     onDrag: StateSetter<TextBox | null>
     draggedLine: TextBox | null;
 }
@@ -23,6 +25,8 @@ export default function TextAreaItem({
     container,
     onKeyDown,
     onChange,
+    onFocus,
+    onBlur,
     onDrag,
     draggedLine
 }: TextAreaItemProps) {
@@ -81,6 +85,8 @@ export default function TextAreaItem({
                 onPointerDown={handlePointerDown}
                 onKeyDown={onKeyDown}
                 onChange={(e) => onChange(line.id, e.target.value)}
+                onFocus={onFocus}
+                onBlur={onBlur}
                 placeholder="How was your day?"
                 disabled={!focus}
                 spellCheck={false}

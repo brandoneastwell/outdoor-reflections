@@ -1,10 +1,13 @@
+export type SuggestionType = "sentence_starter" | "autocomplete";
+
 export type JournalSuggestion = {
-    type: "sentence_starter";
+    type: SuggestionType;
     text: string;
 };
 
-export type SentenceStartersRequest = {
+export type ContentGenerationRequest = {
     currentContent: string;
+    currentBlock?: string;
     recentContent: string[];
 };
 
@@ -12,6 +15,8 @@ export type EntryAiStatus = "idle" | "loading" | "ready" | "unavailable";
 
 export type EntryAiState = {
     status: EntryAiStatus;
-    suggestions: JournalSuggestion[];
+    sentence_starters: string[];
+    autocomplete?: string;
+    targetBlockIndex: number | null;
     error: string | null;
 };

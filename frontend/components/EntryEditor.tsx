@@ -33,9 +33,14 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [editorScale, setEditorScale] = useState(1);
     const [syncPopupVisible, setSyncPopupVisible] = useState(false);
     const [syncStatus, setSyncStatus] = useState<SyncStatus | "syncing">(initEntry.syncStatus ? "synced" : "pending");
+    const [isOnline, setIsOnline] = useState(true);
+    const [recentContent, setRecentContent] = useState<string[]>([]);
+    const [focusedTextBlockIndex, setFocusedTextBlockIndex] = useState<number | null>(null);
     const [aiState, setAiState] = useState<EntryAiState>({
+        autocomplete: undefined,
         status: "idle",
-        suggestions: [],
+        sentence_starters: [],
+        targetBlockIndex: null,
         error: null,
     });
     const user = useAuth()
@@ -44,6 +49,11 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const editorAreaRef = useRef<HTMLDivElement | null>(null);
     const latestEntryRef = useRef<Entry>(entry);
     const aiRequestRef = useRef<AbortController | null>(null);
+    const aiRequestTypeRef = useRef<"sentence_starter" | "autocomplete" | null>(null);
+    const autocompleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const focusedTextBlockIndexRef = useRef<number | null>(null);
+    const initialSuggestionRequestedRef = useRef(false);
+    const wasInitiallyBlankRef = useRef(isEntryBlank(initEntry));
     const editableEntryKey = [
         entry.title,
         entry.content,
@@ -57,44 +67,69 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     }, [entry]);
 
     useEffect(() => {
-        return () => aiRequestRef.current?.abort();
+        return () => {
+            aiRequestRef.current?.abort();
+            if (autocompleteTimeoutRef.current) {
+                clearTimeout(autocompleteTimeoutRef.current);
+            }
+        };
     }, [entry.id]);
 
     const clearAiSuggestions = useCallback(() => {
         aiRequestRef.current?.abort();
         aiRequestRef.current = null;
+        aiRequestTypeRef.current = null;
         setAiState({
+            autocomplete: undefined,
             status: "idle",
-            suggestions: [],
+            sentence_starters: [],
+            targetBlockIndex: null,
             error: null,
         });
     }, []);
 
-    const requestSentenceStarters = useCallback(async (
+    const requestContentGeneration = useCallback(async (
+        type: 'sentence_starter' | 'autocomplete',
         currentContent: string,
         recentContent: string[],
+        targetBlockIndex: number,
     ): Promise<JournalSuggestion[]> => {
+        if (!navigator.onLine || recentContent.length <= 1) return [];
+
         aiRequestRef.current?.abort();
 
         const requestController = new AbortController();
         aiRequestRef.current = requestController;
+        aiRequestTypeRef.current = type;
         setAiState({
+            autocomplete: undefined,
             status: "loading",
-            suggestions: [],
+            sentence_starters: [],
+            targetBlockIndex,
             error: null,
         });
 
         try {
-            const suggestions = await reflectionsAiManager.generateSentenceStarters(
-                entry.id,
-                {currentContent, recentContent},
-                requestController.signal,
-            );
+            const suggestions = type === "autocomplete"
+                ? await reflectionsAiManager.getInlineCompletion(
+                    entry.id,
+                    {currentContent, recentContent},
+                    requestController.signal,
+                )
+                : await reflectionsAiManager.getSentenceStarters(
+                    entry.id,
+                    {currentContent, recentContent},
+                    requestController.signal,
+                );
 
             if (!requestController.signal.aborted) {
                 setAiState({
+                    autocomplete: type === "autocomplete" ? suggestions[0]?.text : undefined,
                     status: "ready",
-                    suggestions,
+                    sentence_starters: type === "sentence_starter"
+                        ? suggestions.map((suggestion) => suggestion.text)
+                        : [],
+                    targetBlockIndex,
                     error: null,
                 });
             }
@@ -108,17 +143,146 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                 : "AI sentence starter service is unavailable";
 
             setAiState({
+                autocomplete: undefined,
                 status: "unavailable",
-                suggestions: [],
+                sentence_starters: [],
+                targetBlockIndex,
                 error: message,
             });
             return [];
         } finally {
             if (aiRequestRef.current === requestController) {
                 aiRequestRef.current = null;
+                aiRequestTypeRef.current = null;
             }
         }
     }, [entry.id]);
+
+    useEffect(() => {
+        const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+        const handleOffline = () => {
+            setIsOnline(false);
+            if (autocompleteTimeoutRef.current) {
+                clearTimeout(autocompleteTimeoutRef.current);
+                autocompleteTimeoutRef.current = null;
+            }
+            clearAiSuggestions();
+        };
+
+        updateOnlineStatus();
+        window.addEventListener("online", updateOnlineStatus);
+        window.addEventListener("offline", handleOffline);
+
+        return () => {
+            window.removeEventListener("online", updateOnlineStatus);
+            window.removeEventListener("offline", handleOffline);
+        };
+    }, [clearAiSuggestions]);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadRecentContent = async () => {
+            try {
+                const storedEntries = (await db.getAll("reflections")) ?? [];
+                if (cancelled) return;
+
+                const previousContent = storedEntries
+                    .filter((storedEntry) => storedEntry.id !== entry.id)
+                    .sort((first, second) => (
+                        new Date(second.lastEditedAt).getTime() - new Date(first.lastEditedAt).getTime()
+                    ))
+                    .map((storedEntry) => storedEntry.content
+                        .map((block) => block.trim())
+                        .filter(Boolean)
+                        .join("\n"))
+                    .filter(Boolean)
+                    .slice(0, 10);
+
+                setRecentContent(previousContent);
+            } catch (error) {
+                console.warn("Unable to load previous entries for AI context", error);
+                if (!cancelled) setRecentContent([]);
+            }
+        };
+
+        void loadRecentContent();
+        return () => {
+            cancelled = true;
+        };
+    }, [entry.id]);
+
+    useEffect(() => {
+        const firstBlockIsEmpty = entry.content.length > 0 && entry.content[0].trim() === "";
+        if (
+            !wasInitiallyBlankRef.current ||
+            initialSuggestionRequestedRef.current ||
+            !firstBlockIsEmpty ||
+            !isOnline ||
+            recentContent.length <= 1
+        ) {
+            return;
+        }
+
+        initialSuggestionRequestedRef.current = true;
+        void requestContentGeneration("sentence_starter", "", recentContent, 0);
+    }, [entry.content, isOnline, recentContent, requestContentGeneration]);
+
+    const handleTextBlockFocus = useCallback((index: number) => {
+        focusedTextBlockIndexRef.current = index;
+        setFocusedTextBlockIndex(index);
+    }, []);
+
+    const handleTextBlockBlur = useCallback((index: number) => {
+        if (focusedTextBlockIndexRef.current !== index) return;
+
+        focusedTextBlockIndexRef.current = null;
+        setFocusedTextBlockIndex(null);
+        if (autocompleteTimeoutRef.current) {
+            clearTimeout(autocompleteTimeoutRef.current);
+            autocompleteTimeoutRef.current = null;
+        }
+
+        if (aiRequestTypeRef.current === "autocomplete") {
+            clearAiSuggestions();
+            return;
+        }
+
+        setAiState((currentState: EntryAiState) => currentState.autocomplete !== undefined
+            ? {
+                autocomplete: undefined,
+                status: "idle",
+                sentence_starters: [],
+                targetBlockIndex: null,
+                error: null,
+            }
+            : currentState
+        );
+    }, [clearAiSuggestions]);
+
+    const handleTextBlockChange = useCallback((index: number, content: string[]) => {
+        if (autocompleteTimeoutRef.current) {
+            clearTimeout(autocompleteTimeoutRef.current);
+            autocompleteTimeoutRef.current = null;
+        }
+
+        clearAiSuggestions();
+
+        const currentBlock = content[index]?.trim() ?? "";
+        if (!isOnline || recentContent.length <= 1 || currentBlock.length === 0) return;
+
+        autocompleteTimeoutRef.current = setTimeout(() => {
+            autocompleteTimeoutRef.current = null;
+            if (focusedTextBlockIndexRef.current !== index || !navigator.onLine) return;
+
+            void requestContentGeneration(
+                "autocomplete",
+                content.join("\n"),
+                recentContent,
+                index,
+            );
+        }, 10_000);
+    }, [clearAiSuggestions, isOnline, recentContent, requestContentGeneration]);
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -236,8 +400,12 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     setDrawColor,
                     editorScale,
                     aiState,
-                    requestSentenceStarters,
+                    requestContentGeneration,
                     clearAiSuggestions,
+                    focusedTextBlockIndex,
+                    onTextBlockFocus: handleTextBlockFocus,
+                    onTextBlockBlur: handleTextBlockBlur,
+                    onTextBlockChange: handleTextBlockChange,
                 }}>
                     <div className="flex flex-row justify-between text-lg md:text-3xl text-rose tracking-wider font-flower">
                         <DatePicker />

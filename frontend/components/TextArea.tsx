@@ -18,7 +18,13 @@ const createLine = (text = ""): TextBox => ({
 });
 
 export default function TextArea({ focus, container }: TextAreaProps) {
-    const {entry, setEntry} = useContext(EntryContext)
+    const {
+        entry,
+        setEntry,
+        onTextBlockFocus,
+        onTextBlockBlur,
+        onTextBlockChange,
+    } = useContext(EntryContext)
     const [draggedLine, setDraggedLine] = useState<TextBox | null>(null);
     const [content, setContent] = useState<TextBox[]>(
         () => entry.content.map((text) => createLine(text))
@@ -54,6 +60,10 @@ export default function TextArea({ focus, container }: TextAreaProps) {
             ...prevEntry,
             content: nextContent.map((line) => line.text),
         }));
+        onTextBlockChange(
+            nextContent.findIndex((line) => line.id === id),
+            nextContent.map((line) => line.text),
+        );
     };
 
     return (
@@ -64,7 +74,7 @@ export default function TextArea({ focus, container }: TextAreaProps) {
                 className="absolute inset-0 h-full w-full"
             >
                 <AnimatePresence>
-                {content.map((line) => (
+                {content.map((line, index) => (
                         <TextAreaItem
                             key={line.id}
                             line={line}
@@ -72,6 +82,8 @@ export default function TextArea({ focus, container }: TextAreaProps) {
                             container={container}
                             onKeyDown={handleKeyDown}
                             onChange={handleChange}
+                            onFocus={() => onTextBlockFocus(index)}
+                            onBlur={() => onTextBlockBlur(index)}
                             onDrag={setDraggedLine}
                             draggedLine={draggedLine}
                         />

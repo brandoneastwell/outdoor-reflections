@@ -20,7 +20,7 @@ describe("ReflectionsAiManager", () => {
             fetcher,
         });
 
-        const result = await manager.generateSentenceStarters(
+        const result = await manager.getSentenceStarters(
             "reflection/id",
             {
                 currentContent: "Current draft",
@@ -54,7 +54,7 @@ describe("ReflectionsAiManager", () => {
         const manager = new ReflectionsAiManager({fetcher});
 
         await expect(
-            manager.generateSentenceStarters("reflection-id", {
+            manager.getSentenceStarters("reflection-id", {
                 currentContent: "Current draft",
                 recentContent: [],
             }),
@@ -63,6 +63,29 @@ describe("ReflectionsAiManager", () => {
                 name: "ReflectionsAiError",
                 message: "Suggestions are unavailable",
             }),
+        );
+    });
+
+    it("routes inline completion through the current sentence-starter contract", async () => {
+        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+            new Response(JSON.stringify(suggestions), {
+                status: 200,
+                headers: {"Content-Type": "application/json"},
+            }),
+        );
+        const manager = new ReflectionsAiManager({
+            baseUrl: "http://backend.test",
+            fetcher,
+        });
+
+        await manager.getInlineCompletion("reflection-id", {
+            currentContent: "Current draft",
+            recentContent: ["Earlier reflection one", "Earlier reflection two"],
+        });
+
+        expect(fetcher).toHaveBeenCalledWith(
+            "http://backend.test/reflection/reflection-id/intelligence/sentence-starters",
+            expect.any(Object),
         );
     });
 
@@ -76,7 +99,7 @@ describe("ReflectionsAiManager", () => {
         const manager = new ReflectionsAiManager({fetcher});
 
         await expect(
-            manager.generateSentenceStarters("reflection-id", {
+            manager.getSentenceStarters("reflection-id", {
                 currentContent: "Current draft",
                 recentContent: [],
             }),

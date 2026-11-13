@@ -12,11 +12,17 @@ type EntryContextValue = {
     setDrawColor: StateSetter<string>;
     editorScale: number;
     aiState: EntryAiState;
-    requestSentenceStarters: (
+    requestContentGeneration: (
+        type: 'sentence_starter' | 'autocomplete',
         currentContent: string,
         recentContent: string[],
+        targetBlockIndex: number,
     ) => Promise<JournalSuggestion[]>;
     clearAiSuggestions: () => void;
+    focusedTextBlockIndex: number | null;
+    onTextBlockFocus: (index: number) => void;
+    onTextBlockBlur: (index: number) => void;
+    onTextBlockChange: (index: number, content: string[]) => void;
 };
 
 export const EntryContext = createContext<EntryContextValue>({
@@ -37,9 +43,14 @@ export const EntryContext = createContext<EntryContextValue>({
     editorScale: 1,
     aiState: {
         status: "idle",
-        suggestions: [],
+        sentence_starters: [],
+        targetBlockIndex: null,
         error: null,
     },
-    requestSentenceStarters: async () => [],
+    requestContentGeneration: async () => [],
     clearAiSuggestions: () => {},
+    focusedTextBlockIndex: null,
+    onTextBlockFocus: () => {},
+    onTextBlockBlur: () => {},
+    onTextBlockChange: () => {},
 });

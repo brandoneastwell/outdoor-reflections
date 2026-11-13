@@ -1,6 +1,6 @@
 import {API_URL} from "@/constants/apiUrl";
 import {readJsonError} from "@/lib/api/readResponse";
-import type {JournalSuggestion, SentenceStartersRequest} from "@/types/intelligenceTypes";
+import type {JournalSuggestion, ContentGenerationRequest} from "@/types/intelligenceTypes";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 
@@ -32,9 +32,18 @@ export class ReflectionsAiManager {
         this.timeoutMs = timeoutMs;
     }
 
-    async generateSentenceStarters(
+    async getInlineCompletion(
         reflectionId: string,
-        request: SentenceStartersRequest,
+        request: ContentGenerationRequest,
+        signal?: AbortSignal,
+    ): Promise<JournalSuggestion[]> {
+
+        return this.getSentenceStarters(reflectionId, request, signal);
+    }
+
+    async getSentenceStarters(
+        reflectionId: string,
+        request: ContentGenerationRequest,
         signal?: AbortSignal,
     ): Promise<JournalSuggestion[]> {
         const requestController = new AbortController();
