@@ -2,7 +2,8 @@
 
 import {useContext, useState} from "react";
 import {EntryContext} from "@/utils/entryContext";
-import {AnimatePresence, Reorder} from "motion/react";
+import {DragDropProvider, type DragEndEvent} from "@dnd-kit/react";
+import {isSortable} from "@dnd-kit/react/sortable";
 import TextAreaItem from "@/components/TextAreaItem";
 import {TextBox} from "@/types/customTypes";
 import {Entry} from "@/types/entryTypes";
@@ -17,7 +18,7 @@ const createLine = (text = ""): TextBox => ({
     text,
 });
 
-export default function TextArea({ focus, container }: TextAreaProps) {
+export default function TextArea({ focus }: TextAreaProps) {
     const {
         entry,
         setEntry,
@@ -25,7 +26,6 @@ export default function TextArea({ focus, container }: TextAreaProps) {
         onTextBlockBlur,
         onTextBlockChange,
     } = useContext(EntryContext)
-    const [draggedLine, setDraggedLine] = useState<TextBox | null>(null);
     const [content, setContent] = useState<TextBox[]>(
         () => entry.content.map((text) => createLine(text))
     );
@@ -38,9 +38,19 @@ export default function TextArea({ focus, container }: TextAreaProps) {
         }));
     };
 
-    const handleReorder = (newContent: TextBox[]) => {
-        updateContent(newContent);
-    }
+    const handleDragEnd = ({canceled, operation}: DragEndEvent) => {
+        if (canceled || !isSortable(operation.source)) return;
+
+        const {initialIndex, index} = operation.source;
+        if (initialIndex === index || initialIndex < 0 || index < 0) return;
+
+        const nextContent = [...content];
+        const [movedLine] = nextContent.splice(initialIndex, 1);
+        if (!movedLine) return;
+
+        nextContent.splice(index, 0, movedLine);
+        updateContent(nextContent);
+    };
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (event.key === "Enter") {
@@ -67,28 +77,21 @@ export default function TextArea({ focus, container }: TextAreaProps) {
     };
 
     return (
-            <Reorder.Group
-                values={content}
-                axis="y"
-                onReorder={handleReorder}
-                className="absolute inset-0 h-full w-full"
-            >
-                <AnimatePresence>
+        <DragDropProvider onDragEnd={handleDragEnd}>
+            <div className="absolute inset-0 h-full w-full">
                 {content.map((line, index) => (
                         <TextAreaItem
                             key={line.id}
                             line={line}
+                            index={index}
                             focus={focus}
-                            container={container}
                             onKeyDown={handleKeyDown}
                             onChange={handleChange}
                             onFocus={() => onTextBlockFocus(index)}
                             onBlur={() => onTextBlockBlur(index)}
-                            onDrag={setDraggedLine}
-                            draggedLine={draggedLine}
                         />
                     ))}
-                </AnimatePresence>
-            </Reorder.Group>
+            </div>
+        </DragDropProvider>
     );
 }

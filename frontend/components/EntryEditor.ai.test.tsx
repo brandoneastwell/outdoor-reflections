@@ -13,6 +13,10 @@ const databaseMocks = vi.hoisted(() => ({
     saveToLocalDB: vi.fn(),
 }));
 
+const dragDropMocks = vi.hoisted(() => ({
+    onDragEnd: undefined as ((event: unknown) => void) | undefined,
+}));
+
 vi.mock("@/lib/ai/reflectionsAiManager", () => ({
     reflectionsAiManager: aiMocks,
 }));
@@ -31,11 +35,18 @@ vi.mock("@/lib/context/auth", () => ({
     }),
 }));
 
-vi.mock("motion/react", () => ({
-    AnimatePresence: ({children}: {children: React.ReactNode}) => children,
-    Reorder: {
-        Group: ({children}: {children: React.ReactNode}) => <div>{children}</div>,
+vi.mock("@dnd-kit/react", () => ({
+    DragDropProvider: ({children, onDragEnd}: {
+        children: React.ReactNode;
+        onDragEnd: (event: unknown) => void;
+    }) => {
+        dragDropMocks.onDragEnd = onDragEnd;
+        return children;
     },
+}));
+
+vi.mock("@dnd-kit/react/sortable", () => ({
+    isSortable: () => true,
 }));
 
 vi.mock("@/components/TextAreaItem", () => ({
@@ -118,6 +129,7 @@ describe("EntryEditor AI interactions", () => {
         aiMocks.getSentenceStarters.mockReset().mockResolvedValue(suggestions);
         databaseMocks.getAll.mockReset().mockResolvedValue(previousEntries);
         databaseMocks.saveToLocalDB.mockReset().mockResolvedValue("current-entry");
+        dragDropMocks.onDragEnd = undefined;
     });
 
     afterEach(() => {
@@ -211,5 +223,28 @@ describe("EntryEditor AI interactions", () => {
         });
 
         expect(aiMocks.getInlineCompletion).not.toHaveBeenCalled();
+    });
+
+    it("commits the new text block order when dragging ends", async () => {
+        render(<EntryEditor initEntry={makeEntry({content: ["First", "Second"]})} />);
+        await flushEffects();
+
+        expect(screen.getAllByRole<HTMLTextAreaElement>("textbox", {name: "entry block"}).map((block) => block.value))
+            .toEqual(["First", "Second"]);
+
+        act(() => {
+            dragDropMocks.onDragEnd?.({
+                canceled: false,
+                operation: {
+                    source: {
+                        initialIndex: 0,
+                        index: 1,
+                    },
+                },
+            });
+        });
+
+        expect(screen.getAllByRole<HTMLTextAreaElement>("textbox", {name: "entry block"}).map((block) => block.value))
+            .toEqual(["Second", "First"]);
     });
 });
