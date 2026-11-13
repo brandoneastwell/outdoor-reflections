@@ -8,6 +8,7 @@ interface TextAreaItemProps {
     line: TextBox;
     index: number;
     focus: boolean;
+    selected: boolean;
     onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onChange: (id: string, value: string) => void;
     onFocus: () => void;
@@ -18,6 +19,7 @@ export default function TextAreaItem({
     line,
     index,
     focus,
+    selected,
     onKeyDown,
     onChange,
     onFocus,
@@ -32,6 +34,7 @@ export default function TextAreaItem({
             easing: "ease-out",
         },
     });
+    const showDragHandle = selected || isDragging;
 
     return (
         <div
@@ -49,8 +52,14 @@ export default function TextAreaItem({
                 ref={handleRef}
                 type="button"
                 aria-label="Reorder text block"
+                aria-hidden={!showDragHandle}
+                tabIndex={showDragHandle ? 0 : -1}
                 disabled={!focus}
-                className="absolute left-1 top-1.5 z-10 flex h-5 w-5 touch-none items-center justify-center rounded text-rose/60 cursor-grab hover:bg-rose/10 hover:text-rose active:cursor-grabbing disabled:pointer-events-none disabled:opacity-0"
+                onFocus={onFocus}
+                className={
+                    "absolute left-1 top-1.5 z-10 flex h-5 w-5 touch-none items-center justify-center rounded text-rose/60 cursor-grab transition-opacity hover:bg-rose/10 hover:text-rose active:cursor-grabbing disabled:pointer-events-none " +
+                    (showDragHandle ? "opacity-100" : "pointer-events-none opacity-0")
+                }
             >
                 <span aria-hidden="true">⠿</span>
             </button>

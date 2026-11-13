@@ -33,6 +33,7 @@ export default function TextArea({ focus }: TextAreaProps) {
         onTextBlockFocus,
         onTextBlockBlur,
         onTextBlockChange,
+        focusedTextBlockIndex,
     } = useContext(EntryContext)
     const isMounted = useSyncExternalStore(
         subscribeToClient,
@@ -106,6 +107,7 @@ export default function TextArea({ focus }: TextAreaProps) {
                             line={line}
                             index={index}
                             focus={focus}
+                            selected={focusedTextBlockIndex === index}
                             onKeyDown={handleKeyDown}
                             onChange={handleChange}
                             onFocus={() => onTextBlockFocus(index)}
