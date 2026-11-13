@@ -5,19 +5,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.models.suggestions import (
     SentenceStarter,
     SentenceStartersRequest,
-    SentenceStartersResponse,
+    SentenceStartersResponse, InlineCompletionResponse, InlineCompletionRequest
 )
 from app.services.suggestions import (
-    SentenceStarterService,
-    SentenceStarterServiceUnavailableError,
-    get_sentence_starter_service,
+    ContentGenerationService,
+    ContentGenerationServiceUnavailableError,
+    get_content_generation_service,
 )
 
 
 router = APIRouter(prefix="/v1/suggestions", tags=["suggestions"])
-SentenceStarterServiceDependency = Annotated[
-    SentenceStarterService,
-    Depends(get_sentence_starter_service),
+ContentGenerationServiceDependency = Annotated[
+    ContentGenerationService,
+    Depends(get_content_generation_service),
 ]
 
 
@@ -28,11 +28,11 @@ SentenceStarterServiceDependency = Annotated[
 )
 async def generate_sentence_starters(
     request: SentenceStartersRequest,
-    service: SentenceStarterServiceDependency,
+    service: ContentGenerationServiceDependency,
 ) -> SentenceStartersResponse:
     try:
         suggestions = await service.generate_sentence_starters(request)
-    except SentenceStarterServiceUnavailableError as error:
+    except ContentGenerationServiceUnavailableError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Sentence starter generation is unavailable",
@@ -41,3 +41,20 @@ async def generate_sentence_starters(
     return SentenceStartersResponse(
         suggestions=[SentenceStarter(text=text) for text in suggestions],
     )
+
+@router.post(
+    "/inline-completion",
+    response_model=InlineCompletionResponse,
+    status_code=status.HTTP_200_OK,
+)
+
+async def generate_inline_completion(
+    request: InlineCompletionRequest,
+    service: ContentGenerationServiceDependency,
+) -> InlineCompletionResponse:
+    try:
+        suggestions = await service.generate_sentence_starters(request)
+    except ContentGenerationServiceUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )

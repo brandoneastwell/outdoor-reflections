@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models.suggestions import SentenceStartersRequest
 from app.services.suggestions import (
-    SentenceStarterService,
-    get_sentence_starter_service,
+    ContentGenerationService,
+    get_content_generation_service,
 )
 
 
@@ -33,7 +33,7 @@ class StubSentenceStarterService:
 @pytest.fixture
 def stub_service() -> Iterator[StubSentenceStarterService]:
     service = StubSentenceStarterService()
-    app.dependency_overrides[get_sentence_starter_service] = lambda: service
+    app.dependency_overrides[get_content_generation_service] = lambda: service
     yield service
     app.dependency_overrides.clear()
 
@@ -89,8 +89,8 @@ def test_previous_entries_are_required() -> None:
 
 
 def test_returns_service_unavailable_without_a_provider() -> None:
-    app.dependency_overrides[get_sentence_starter_service] = (
-        lambda: SentenceStarterService()
+    app.dependency_overrides[get_content_generation_service] = (
+        lambda: ContentGenerationService()
     )
     try:
         response = client.post(

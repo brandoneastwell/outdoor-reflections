@@ -1,15 +1,15 @@
 import os
 from functools import lru_cache
 
-from app.models.suggestions import SentenceStartersRequest
+from app.models.suggestions import SentenceStartersRequest, InlineCompletionRequest
 from app.providers.groq import DEFAULT_GROQ_MODEL, GroqService, GroqServiceError
 
 
-class SentenceStarterServiceUnavailableError(RuntimeError):
+class ContentGenerationServiceUnavailableError(RuntimeError):
     """Raised when no sentence-starter provider is available."""
 
 
-class SentenceStarterService:
+class ContentGenerationService:
     def __init__(self, groq_service: GroqService | None = None) -> None:
         self._groq_service = groq_service
 
@@ -18,7 +18,7 @@ class SentenceStarterService:
         request: SentenceStartersRequest,
     ) -> list[str]:
         if self._groq_service is None:
-            raise SentenceStarterServiceUnavailableError
+            raise ContentGenerationServiceUnavailableError
 
         try:
             return await self._groq_service.generate_sentence_starters(
@@ -26,16 +26,31 @@ class SentenceStarterService:
                 previous_entries=request.previous_entries,
             )
         except GroqServiceError as error:
-            raise SentenceStarterServiceUnavailableError from error
+            raise ContentGenerationServiceUnavailableError from error
 
+    async def generate_inline_completion(
+            self,
+            request: InlineCompletionRequest
+    ) -> str:
+        if self._groq_service is None:
+            raise ContentGenerationServiceUnavailableError
+
+        try:
+            return await self._groq_service.generate_inline_completion(
+                current_content=request.current_content,
+                previous_entries=request.previous_entries,
+                current_text_block=request.current_text_block,
+            )
+        except GroqServiceError as error:
+            raise ContentGenerationServiceUnavailableError from error
 
 @lru_cache(maxsize=1)
-def get_sentence_starter_service() -> SentenceStarterService:
+def get_content_generation_service() -> ContentGenerationService:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        return SentenceStarterService()
+        return ContentGenerationService()
 
     model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
-    return SentenceStarterService(
+    return ContentGenerationService(
         groq_service=GroqService(api_key=api_key, model=model),
     )
