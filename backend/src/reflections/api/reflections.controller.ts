@@ -52,4 +52,15 @@ export class ReflectionsController {
       body.recentContent,
     );
   }
+
+  @Post(':id/intelligence/inline-completion')
+  getInlineCompletion(
+      @Body() body: { currentContent: string; currentTextBlock: string, recentContent: string[] },
+  ) {
+    return this.intelligenceService.generateInlineCompletion(
+        body.currentContent,
+        body.recentContent,
+        body.currentTextBlock
+    );
+  }
 }
