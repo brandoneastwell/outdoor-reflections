@@ -15,6 +15,7 @@ const databaseMocks = vi.hoisted(() => ({
 
 const dragDropMocks = vi.hoisted(() => ({
     onDragEnd: undefined as ((event: unknown) => void) | undefined,
+    onDragStart: undefined as ((event: unknown) => void) | undefined,
 }));
 
 vi.mock("@/lib/ai/reflectionsAiManager", () => ({
@@ -36,13 +37,18 @@ vi.mock("@/lib/context/auth", () => ({
 }));
 
 vi.mock("@dnd-kit/react", () => ({
-    DragDropProvider: ({children, onDragEnd}: {
+    DragDropProvider: ({children, onDragEnd, onDragStart}: {
         children: React.ReactNode;
         onDragEnd: (event: unknown) => void;
+        onDragStart: (event: unknown) => void;
     }) => {
         dragDropMocks.onDragEnd = onDragEnd;
+        dragDropMocks.onDragStart = onDragStart;
         return children;
     },
+    DragOverlay: ({children}: {children: React.ReactNode}) => (
+        <div data-testid="drag-overlay">{children}</div>
+    ),
 }));
 
 vi.mock("@dnd-kit/react/sortable", () => ({
@@ -59,6 +65,7 @@ vi.mock("@/components/TextAreaItem", () => ({
     }) => (
         <textarea
             aria-label="entry block"
+            data-block-id={line.id}
             value={line.text}
             onChange={(event) => onChange(line.id, event.target.value)}
             onFocus={onFocus}
@@ -130,6 +137,7 @@ describe("EntryEditor AI interactions", () => {
         databaseMocks.getAll.mockReset().mockResolvedValue(previousEntries);
         databaseMocks.saveToLocalDB.mockReset().mockResolvedValue("current-entry");
         dragDropMocks.onDragEnd = undefined;
+        dragDropMocks.onDragStart = undefined;
     });
 
     afterEach(() => {
@@ -246,5 +254,24 @@ describe("EntryEditor AI interactions", () => {
 
         expect(screen.getAllByRole<HTMLTextAreaElement>("textbox", {name: "entry block"}).map((block) => block.value))
             .toEqual(["Second", "First"]);
+    });
+
+    it("renders drag feedback outside the scaled editor", async () => {
+        render(<EntryEditor initEntry={makeEntry({content: ["First", "Second"]})} />);
+        await flushEffects();
+
+        const textBlocks = screen.getAllByRole<HTMLTextAreaElement>("textbox", {name: "entry block"});
+        act(() => {
+            dragDropMocks.onDragStart?.({
+                operation: {
+                    source: {
+                        id: textBlocks[0].getAttribute("data-block-id"),
+                    },
+                },
+            });
+        });
+
+        expect(screen.getByTestId("drag-overlay")).toHaveTextContent("First");
+        expect(screen.getByTestId("drag-overlay").parentElement).toBe(document.body);
     });
 });

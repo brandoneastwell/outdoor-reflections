@@ -1,8 +1,14 @@
 "use client"
 
-import {useContext, useState} from "react";
+import {useContext, useState, useSyncExternalStore} from "react";
+import {createPortal} from "react-dom";
 import {EntryContext} from "@/utils/entryContext";
-import {DragDropProvider, type DragEndEvent} from "@dnd-kit/react";
+import {
+    DragDropProvider,
+    DragOverlay,
+    type DragEndEvent,
+    type DragStartEvent,
+} from "@dnd-kit/react";
 import {isSortable} from "@dnd-kit/react/sortable";
 import TextAreaItem from "@/components/TextAreaItem";
 import {TextBox} from "@/types/customTypes";
@@ -18,6 +24,8 @@ const createLine = (text = ""): TextBox => ({
     text,
 });
 
+const subscribeToClient = () => () => {};
+
 export default function TextArea({ focus }: TextAreaProps) {
     const {
         entry,
@@ -26,6 +34,12 @@ export default function TextArea({ focus }: TextAreaProps) {
         onTextBlockBlur,
         onTextBlockChange,
     } = useContext(EntryContext)
+    const isMounted = useSyncExternalStore(
+        subscribeToClient,
+        () => true,
+        () => false,
+    );
+    const [activeLine, setActiveLine] = useState<TextBox | null>(null);
     const [content, setContent] = useState<TextBox[]>(
         () => entry.content.map((text) => createLine(text))
     );
@@ -38,7 +52,14 @@ export default function TextArea({ focus }: TextAreaProps) {
         }));
     };
 
+    const handleDragStart = ({operation}: DragStartEvent) => {
+        setActiveLine(
+            content.find((line) => line.id === operation.source?.id) ?? null,
+        );
+    };
+
     const handleDragEnd = ({canceled, operation}: DragEndEvent) => {
+        setActiveLine(null);
         if (canceled || !isSortable(operation.source)) return;
 
         const {initialIndex, index} = operation.source;
@@ -77,7 +98,7 @@ export default function TextArea({ focus }: TextAreaProps) {
     };
 
     return (
-        <DragDropProvider onDragEnd={handleDragEnd}>
+        <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="absolute inset-0 h-full w-full">
                 {content.map((line, index) => (
                         <TextAreaItem
@@ -92,6 +113,18 @@ export default function TextArea({ focus }: TextAreaProps) {
                         />
                     ))}
             </div>
+            {isMounted && createPortal(
+                <DragOverlay className="pointer-events-none z-[100]" dropAnimation={null}>
+                    {activeLine && (
+                        <div className="h-full w-full overflow-hidden rounded-md border border-rose/30 bg-white px-2 shadow-lg">
+                            <div className="whitespace-pre-wrap pl-5 font-mono text-base leading-6.75 text-black">
+                                {activeLine.text || "How was your day?"}
+                            </div>
+                        </div>
+                    )}
+                </DragOverlay>,
+                document.body,
+            )}
         </DragDropProvider>
     );
 }
