@@ -21,3 +21,6 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "live_groq: makes paid network requests to the live Groq API",
+]

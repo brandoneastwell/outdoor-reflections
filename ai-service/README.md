@@ -51,3 +51,33 @@ The health endpoint is available at `http://localhost:8000/health`.
 ```bash
 python -m pytest
 ```
+
+The normal test suite never contacts Groq, even when `GROQ_API_KEY` is set.
+
+### Live Groq tests
+
+The live tests make two paid network requests and are disabled by default. To
+run them directly with Python 3.12 or newer:
+
+```bash
+RUN_LIVE_GROQ_TESTS=1 GROQ_API_KEY=your-groq-api-key \
+  python -m pytest -m live_groq
+```
+
+`GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`.
+
+To run the live suite with Docker:
+
+```bash
+docker build --target test -t outdoor-reflections-ai-test .
+docker run --rm \
+  -e RUN_LIVE_GROQ_TESTS=1 \
+  -e GROQ_API_KEY \
+  -e GROQ_MODEL \
+  outdoor-reflections-ai-test \
+  python -m pytest -m live_groq
+```
+
+Export `GROQ_API_KEY` in the shell before running the Docker command. If
+`RUN_LIVE_GROQ_TESTS=1` is supplied without a key, the suite fails with a
+configuration error rather than silently skipping.
