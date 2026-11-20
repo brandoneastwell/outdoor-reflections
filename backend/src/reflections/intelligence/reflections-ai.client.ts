@@ -26,9 +26,9 @@ export class ReflectionsAiClient {
   }
 
   async generateInlineCompletion(
-      currentContent: string,
-      previousContent: string[],
-      currentTextBlock: string,
+    currentContent: string,
+    previousContent: string[],
+    currentTextBlock: string,
   ): Promise<string> {
     try {
       const response = await fetch(
@@ -40,37 +40,37 @@ export class ReflectionsAiClient {
           },
           body: JSON.stringify({
             current_content: currentContent,
-            previous_content: previousContent,
+            previous_entries: previousContent,
             current_text_block: currentTextBlock,
-          })
-        }
-      )
+          }),
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`AI service returned HTTP ${response.status}`);
       }
 
-      const payload: { suggestion: string } = await response.json();
+      const payload: unknown = await response.json();
       if (!this.isInlineCompletionResponse(payload)) {
         throw new Error('AI service returned an invalid response');
       }
 
-      return payload.suggestion
+      return payload.suggestion;
     } catch (error) {
       throw new ServiceUnavailableException(
-          'AI inline completion service is unavailable',
-          { cause: error },
+        'AI inline completion service is unavailable',
+        { cause: error },
       );
     }
   }
 
   private isInlineCompletionResponse(
-      value: unknown,
+    value: unknown,
   ): value is { suggestion: string } {
     return (
-        this.isRecord(value) &&
-        typeof value.suggestion === 'string' &&
-        value.suggestion.trim().length > 0
+      this.isRecord(value) &&
+      typeof value.suggestion === 'string' &&
+      value.suggestion.trim().length > 0
     );
   }
 

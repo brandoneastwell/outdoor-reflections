@@ -69,6 +69,36 @@ describe('ReflectionsAiClient', () => {
     ]);
   });
 
+  it('calls the Python inline-completion endpoint', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ suggestion: 'I noticed the...' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const client = new ReflectionsAiClient();
+
+    const result = await client.generateInlineCompletion(
+      'Current draft',
+      ['Previous entry'],
+      'As I reached the ridge,',
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://ai-service:8000/v1/suggestions/inline-completion',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_content: 'Current draft',
+          previous_entries: ['Previous entry'],
+          current_text_block: 'As I reached the ridge,',
+        }),
+      }),
+    );
+    expect(result).toBe('I noticed the...');
+  });
+
   it('rejects an unsuccessful AI service response', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
     const client = new ReflectionsAiClient();
