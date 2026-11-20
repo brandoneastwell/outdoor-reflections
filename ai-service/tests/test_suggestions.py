@@ -2,9 +2,13 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.main import app
-from app.models.suggestions import SentenceStartersRequest
+from app.models.suggestions import (
+    InlineCompletionResponse,
+    SentenceStartersRequest,
+)
 from app.services.suggestions import (
     ContentGenerationService,
     get_content_generation_service,
@@ -107,3 +111,14 @@ def test_returns_service_unavailable_without_a_provider() -> None:
     assert response.json() == {
         "detail": "Sentence starter generation is unavailable",
     }
+
+
+def test_inline_completion_response_accepts_100_characters() -> None:
+    response = InlineCompletionResponse(suggestion="a" * 100)
+
+    assert response.suggestion == "a" * 100
+
+
+def test_inline_completion_response_rejects_more_than_100_characters() -> None:
+    with pytest.raises(ValidationError):
+        InlineCompletionResponse(suggestion="a" * 101)

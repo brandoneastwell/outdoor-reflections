@@ -34,6 +34,7 @@ class SentenceStartersResponse(BaseModel):
         Field(min_length=3, max_length=3),
     ]
 
+
 class InlineCompletionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -44,5 +45,8 @@ class InlineCompletionRequest(BaseModel):
     ]
     current_text_block: Annotated[str, Field(max_length=10_000)]
 
+
 class InlineCompletionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+    suggestion: Annotated[str, Field(min_length=1, max_length=100)]
