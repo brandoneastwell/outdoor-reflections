@@ -19,6 +19,7 @@
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules dotenv -e .env.test -- jest --coverage --runInBand",
     "test:debug": "dotenv -e .env.test -- node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:integration": "NODE_OPTIONS=--experimental-vm-modules dotenv -e .env.test -- jest --runInBand",
+    "test:ai-integration": "RUN_LIVE_AI_SERVICE_TESTS=1 NODE_OPTIONS=--experimental-vm-modules jest --runInBand --runTestsByPath src/reflections/intelligence/reflections-ai.client.live.integration.spec.ts",
     "docker:start": "docker-compose up -d",
     "db:push:test": "dotenv -e .env.test -- prisma db push",
     "db:migrate:test": "dotenv -e .env.test -- prisma migrate deploy"

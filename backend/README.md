@@ -70,6 +70,18 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+### NestJS to Python AI integration test
+
+Start the Python service with `GROQ_API_KEY` configured, then run:
+
+```bash
+AI_SERVICE_URL=http://localhost:8000 npm run test:ai-integration
+```
+
+This opt-in test checks the FastAPI health contract and sends one sentence
+starter request through the real NestJS AI client. It makes one paid Groq API
+request and is skipped during normal Jest runs.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
