@@ -244,6 +244,84 @@ describe("EntryEditor AI interactions", () => {
         );
     });
 
+    it("restarts the inline completion delay after continued typing", async () => {
+        render(<EntryEditor initEntry={makeEntry({content: ["Existing thought"]})} />);
+        await flushEffects();
+
+        const textBlock = screen.getByRole("textbox", {name: "entry block"});
+        fireEvent.focus(textBlock);
+        fireEvent.change(textBlock, {target: {value: "Existing thought continued"}});
+
+        await act(async () => vi.advanceTimersByTime(9_000));
+        fireEvent.change(textBlock, {target: {value: "Existing thought continued again"}});
+        await act(async () => vi.advanceTimersByTime(9_999));
+        expect(aiMocks.getInlineCompletion).not.toHaveBeenCalled();
+
+        await act(async () => {
+            vi.advanceTimersByTime(1);
+            await Promise.resolve();
+        });
+
+        expect(aiMocks.getInlineCompletion).toHaveBeenCalledOnce();
+        expect(aiMocks.getInlineCompletion).toHaveBeenCalledWith(
+            "current-entry",
+            expect.objectContaining({
+                currentContent: "Existing thought continued again",
+                currentTextBlock: "Existing thought continued again",
+            }),
+            expect.any(AbortSignal),
+        );
+    });
+
+    it("does not request inline completion for an empty text block", async () => {
+        render(<EntryEditor initEntry={makeEntry({content: ["Existing thought"]})} />);
+        await flushEffects();
+
+        const textBlock = screen.getByRole("textbox", {name: "entry block"});
+        fireEvent.focus(textBlock);
+        fireEvent.change(textBlock, {target: {value: "   "}});
+        await act(async () => vi.advanceTimersByTime(10_000));
+
+        expect(aiMocks.getInlineCompletion).not.toHaveBeenCalled();
+    });
+
+    it("cancels the pending inline completion when the browser goes offline", async () => {
+        render(<EntryEditor initEntry={makeEntry({content: ["Existing thought"]})} />);
+        await flushEffects();
+
+        const textBlock = screen.getByRole("textbox", {name: "entry block"});
+        fireEvent.focus(textBlock);
+        fireEvent.change(textBlock, {target: {value: "Existing thought continued"}});
+        Object.defineProperty(navigator, "onLine", {configurable: true, value: false});
+        fireEvent(window, new Event("offline"));
+        await act(async () => vi.advanceTimersByTime(10_000));
+
+        expect(aiMocks.getInlineCompletion).not.toHaveBeenCalled();
+    });
+
+    it("uses the focused block as inline context without changing other blocks", async () => {
+        render(<EntryEditor initEntry={makeEntry({content: ["First thought", "Second thought"]})} />);
+        await flushEffects();
+
+        const textBlocks = screen.getAllByRole("textbox", {name: "entry block"});
+        fireEvent.focus(textBlocks[1]);
+        fireEvent.change(textBlocks[1], {target: {value: "Second thought continued"}});
+        await act(async () => {
+            vi.advanceTimersByTime(10_000);
+            await Promise.resolve();
+        });
+
+        expect(aiMocks.getInlineCompletion).toHaveBeenCalledWith(
+            "current-entry",
+            expect.objectContaining({
+                currentContent: "First thought\nSecond thought continued",
+                currentTextBlock: "Second thought continued",
+            }),
+            expect.any(AbortSignal),
+        );
+        expect(textBlocks[0]).toHaveValue("First thought");
+    });
+
     it("cancels the pending completion when the block loses focus", async () => {
         render(<EntryEditor initEntry={makeEntry({content: ["Existing thought"]})} />);
         await flushEffects();

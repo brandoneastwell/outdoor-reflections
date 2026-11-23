@@ -145,8 +145,32 @@ describe("EntryEditor AI backend integration", () => {
             }),
         );
 
+        fireEvent.blur(textBlock);
+        expect(screen.queryByRole("button", {name: "Today I felt..."})).not.toBeInTheDocument();
+        fireEvent.focus(textBlock);
         fireEvent.click(screen.getByRole("button", {name: "Today I felt..."}));
         expect(textBlock.value).toBe("Today I felt...");
+    });
+
+    it("shows sentence starters only for the first empty block", async () => {
+        fetchMock.mockResolvedValue(
+            new Response(JSON.stringify([
+                {type: "sentence_starter", text: "I noticed..."},
+                {type: "sentence_starter", text: "Today I felt..."},
+                {type: "sentence_starter", text: "Next time..."},
+            ]), {status: 200}),
+        );
+
+        render(<EntryEditor initEntry={makeEntry({content: ["", ""]})} />);
+        await flushPromises();
+
+        const textBlocks = screen.getAllByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        fireEvent.focus(textBlocks[1]);
+        expect(screen.queryByRole("button", {name: "I noticed..."})).not.toBeInTheDocument();
+
+        fireEvent.blur(textBlocks[1]);
+        fireEvent.focus(textBlocks[0]);
+        expect(screen.getByRole("button", {name: "I noticed..."})).toBeInTheDocument();
     });
 
     it("sends typed content and accepts the inline response returned by NestJS", async () => {
@@ -184,7 +208,59 @@ describe("EntryEditor AI backend integration", () => {
             }),
         );
 
+        expect(textBlock.value).toBe("Existing thought continued");
         fireEvent.click(screen.getByRole("button", {name: "Accept AI completion"}));
         expect(textBlock.value).toBe("Existing thought continued beneath the trees");
+    });
+
+    it("ignores an inline response after the user types again", async () => {
+        let resolveResponse: ((response: Response) => void) | undefined;
+        fetchMock.mockImplementation(() => new Promise<Response>((resolve) => {
+            resolveResponse = resolve;
+        }));
+
+        render(<EntryEditor initEntry={makeEntry({content: ["Existing thought"]})} />);
+        await flushPromises();
+
+        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        fireEvent.focus(textBlock);
+        fireEvent.change(textBlock, {target: {value: "Existing thought continued"}});
+        await act(async () => vi.advanceTimersByTime(10_000));
+        expect(fetchMock).toHaveBeenCalledOnce();
+
+        fireEvent.change(textBlock, {target: {value: "Existing thought changed again"}});
+        await act(async () => {
+            resolveResponse?.(new Response(JSON.stringify("stale completion"), {status: 200}));
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(textBlock.value).toBe("Existing thought changed again");
+        expect(screen.queryByRole("button", {name: "Accept AI completion"})).not.toBeInTheDocument();
+    });
+
+    it("keeps editing available when the backend rejects inline completion", async () => {
+        fetchMock.mockResolvedValue(
+            new Response(JSON.stringify({message: "AI inline completion service is unavailable"}), {
+                status: 503,
+                headers: {"Content-Type": "application/json"},
+            }),
+        );
+
+        render(<EntryEditor initEntry={makeEntry({content: ["Existing thought"]})} />);
+        await flushPromises();
+
+        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        fireEvent.focus(textBlock);
+        fireEvent.change(textBlock, {target: {value: "Existing thought continued"}});
+        await act(async () => {
+            vi.advanceTimersByTime(10_000);
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(textBlock).toHaveValue("Existing thought continued");
+        expect(textBlock).not.toBeDisabled();
+        expect(screen.queryByRole("button", {name: "Accept AI completion"})).not.toBeInTheDocument();
     });
 });
