@@ -13,7 +13,7 @@ import {SVG_PATHS} from "@/constants/svgPaths";
 import SyncLoginPopup from "@/components/SyncLoginPopup";
 import {useAuth} from "@/lib/context/auth";
 import {reflectionsAiManager} from "@/lib/ai/reflectionsAiManager";
-import type {EntryAiState, JournalSuggestion} from "@/types/intelligenceTypes";
+import type {EntryAiState} from "@/types/intelligenceTypes";
 
 const db = new Database();
 
@@ -49,6 +49,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const editorAreaRef = useRef<HTMLDivElement | null>(null);
     const latestEntryRef = useRef<Entry>(entry);
     const aiRequestRef = useRef<AbortController | null>(null);
+    const aiRequestIdRef = useRef(0);
     const aiRequestTypeRef = useRef<"sentence_starter" | "autocomplete" | null>(null);
     const autocompleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const focusedTextBlockIndexRef = useRef<number | null>(null);
@@ -76,6 +77,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     }, [entry.id]);
 
     const clearAiSuggestions = useCallback(() => {
+        aiRequestIdRef.current += 1;
         aiRequestRef.current?.abort();
         aiRequestRef.current = null;
         aiRequestTypeRef.current = null;
@@ -93,12 +95,15 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
         currentContent: string,
         recentContent: string[],
         targetBlockIndex: number,
-    ): Promise<JournalSuggestion[]> => {
-        if (!navigator.onLine || recentContent.length <= 1) return [];
+        currentTextBlock?: string,
+    ): Promise<void> => {
+        if (!navigator.onLine || recentContent.length <= 1) return;
 
         aiRequestRef.current?.abort();
 
         const requestController = new AbortController();
+        const requestId = aiRequestIdRef.current + 1;
+        aiRequestIdRef.current = requestId;
         aiRequestRef.current = requestController;
         aiRequestTypeRef.current = type;
         setAiState({
@@ -110,33 +115,47 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
         });
 
         try {
-            const suggestions = type === "autocomplete"
-                ? await reflectionsAiManager.getInlineCompletion(
+            if (type === "autocomplete") {
+                if (!currentTextBlock) return;
+                const completion = await reflectionsAiManager.getInlineCompletion(
                     entry.id,
-                    {currentContent, recentContent},
-                    requestController.signal,
-                )
-                : await reflectionsAiManager.getSentenceStarters(
-                    entry.id,
-                    {currentContent, recentContent},
+                    {currentContent, currentTextBlock, recentContent},
                     requestController.signal,
                 );
 
-            if (!requestController.signal.aborted) {
+                if (
+                    !requestController.signal.aborted &&
+                    aiRequestIdRef.current === requestId &&
+                    focusedTextBlockIndexRef.current === targetBlockIndex
+                ) {
+                    setAiState({
+                        autocomplete: completion,
+                        status: "ready",
+                        sentence_starters: [],
+                        targetBlockIndex,
+                        error: null,
+                    });
+                }
+                return;
+            }
+
+            const suggestions = await reflectionsAiManager.getSentenceStarters(
+                    entry.id,
+                    {currentContent, recentContent},
+                    requestController.signal,
+            );
+
+            if (!requestController.signal.aborted && aiRequestIdRef.current === requestId) {
                 setAiState({
-                    autocomplete: type === "autocomplete" ? suggestions[0]?.text : undefined,
+                    autocomplete: undefined,
                     status: "ready",
-                    sentence_starters: type === "sentence_starter"
-                        ? suggestions.map((suggestion) => suggestion.text)
-                        : [],
+                    sentence_starters: suggestions.map((suggestion) => suggestion.text),
                     targetBlockIndex,
                     error: null,
                 });
             }
-
-            return suggestions;
         } catch (error) {
-            if (requestController.signal.aborted) return [];
+            if (requestController.signal.aborted || aiRequestIdRef.current !== requestId) return;
 
             const message = error instanceof Error
                 ? error.message
@@ -149,7 +168,6 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                 targetBlockIndex,
                 error: message,
             });
-            return [];
         } finally {
             if (aiRequestRef.current === requestController) {
                 aiRequestRef.current = null;
@@ -281,6 +299,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                 content.join("\n"),
                 recentContent,
                 index,
+                currentBlock,
             );
         }, 10_000);
     }, [clearAiSuggestions, isOnline, recentContent, requestContentGeneration]);
@@ -401,7 +420,6 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     setDrawColor,
                     editorScale,
                     aiState,
-                    requestContentGeneration,
                     clearAiSuggestions,
                     focusedTextBlockIndex,
                     onTextBlockFocus: handleTextBlockFocus,

@@ -7,8 +7,11 @@ export type JournalSuggestion = {
 
 export type ContentGenerationRequest = {
     currentContent: string;
-    currentBlock?: string;
     recentContent: string[];
+};
+
+export type InlineCompletionRequest = ContentGenerationRequest & {
+    currentTextBlock: string;
 };
 
 export type EntryAiStatus = "idle" | "loading" | "ready" | "unavailable";

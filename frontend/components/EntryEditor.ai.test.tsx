@@ -132,7 +132,7 @@ describe("EntryEditor AI interactions", () => {
             value: true,
         });
 
-        aiMocks.getInlineCompletion.mockReset().mockResolvedValue(suggestions);
+        aiMocks.getInlineCompletion.mockReset().mockResolvedValue(" beneath the trees");
         aiMocks.getSentenceStarters.mockReset().mockResolvedValue(suggestions);
         databaseMocks.getAll.mockReset().mockResolvedValue(previousEntries);
         databaseMocks.saveToLocalDB.mockReset().mockResolvedValue("current-entry");
@@ -208,6 +208,7 @@ describe("EntryEditor AI interactions", () => {
             "current-entry",
             {
                 currentContent: "Existing thought continued",
+                currentTextBlock: "Existing thought continued",
                 recentContent: [
                     "A walk through the woods",
                     "Rain beside the lake",

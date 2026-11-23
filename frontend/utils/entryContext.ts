@@ -1,6 +1,6 @@
 import {createContext, Dispatch} from "react";
 import {DrawPath, Entry} from "@/types/entryTypes";
-import type {EntryAiState, JournalSuggestion} from "@/types/intelligenceTypes";
+import type {EntryAiState} from "@/types/intelligenceTypes";
 
 type StateSetter<T> = Dispatch<T | ((previousState: T) => T)>;
 
@@ -12,12 +12,6 @@ type EntryContextValue = {
     setDrawColor: StateSetter<string>;
     editorScale: number;
     aiState: EntryAiState;
-    requestContentGeneration: (
-        type: 'sentence_starter' | 'autocomplete',
-        currentContent: string,
-        recentContent: string[],
-        targetBlockIndex: number,
-    ) => Promise<JournalSuggestion[]>;
     clearAiSuggestions: () => void;
     focusedTextBlockIndex: number | null;
     onTextBlockFocus: (index: number) => void;
@@ -47,7 +41,6 @@ export const EntryContext = createContext<EntryContextValue>({
         targetBlockIndex: null,
         error: null,
     },
-    requestContentGeneration: async () => [],
     clearAiSuggestions: () => {},
     focusedTextBlockIndex: null,
     onTextBlockFocus: () => {},

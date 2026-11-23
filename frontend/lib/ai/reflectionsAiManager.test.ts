@@ -66,9 +66,9 @@ describe("ReflectionsAiManager", () => {
         );
     });
 
-    it("routes inline completion through the current sentence-starter contract", async () => {
+    it("calls the inline completion endpoint with the current text block", async () => {
         const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-            new Response(JSON.stringify(suggestions), {
+            new Response(JSON.stringify(" beneath the trees"), {
                 status: 200,
                 headers: {"Content-Type": "application/json"},
             }),
@@ -78,14 +78,22 @@ describe("ReflectionsAiManager", () => {
             fetcher,
         });
 
-        await manager.getInlineCompletion("reflection-id", {
+        const result = await manager.getInlineCompletion("reflection-id", {
             currentContent: "Current draft",
+            currentTextBlock: "Current draft",
             recentContent: ["Earlier reflection one", "Earlier reflection two"],
         });
 
+        expect(result).toBe(" beneath the trees");
         expect(fetcher).toHaveBeenCalledWith(
-            "http://backend.test/reflection/reflection-id/intelligence/sentence-starters",
-            expect.any(Object),
+            "http://backend.test/reflection/reflection-id/intelligence/inline-completion",
+            expect.objectContaining({
+                body: JSON.stringify({
+                    currentContent: "Current draft",
+                    currentTextBlock: "Current draft",
+                    recentContent: ["Earlier reflection one", "Earlier reflection two"],
+                }),
+            }),
         );
     });
 

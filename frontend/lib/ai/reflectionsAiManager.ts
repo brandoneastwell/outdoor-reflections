@@ -1,6 +1,10 @@
 import {API_URL} from "@/constants/apiUrl";
 import {readJsonError} from "@/lib/api/readResponse";
-import type {JournalSuggestion, ContentGenerationRequest} from "@/types/intelligenceTypes";
+import type {
+    ContentGenerationRequest,
+    InlineCompletionRequest,
+    JournalSuggestion,
+} from "@/types/intelligenceTypes";
 
 const DEFAULT_TIMEOUT_MS = 20_000;
 
@@ -17,10 +21,18 @@ export class ReflectionsAiError extends Error {
     }
 }
 
+export class ReflectionsAiRateLimitError extends ReflectionsAiError {
+    constructor(public readonly retryAfterSeconds: number) {
+        super("AI suggestions are temporarily paused");
+        this.name = "ReflectionsAiRateLimitError";
+    }
+}
+
 export class ReflectionsAiManager {
     private readonly baseUrl: string;
     private readonly fetcher: typeof fetch;
     private readonly timeoutMs: number;
+    private cooldownUntil = 0;
 
     constructor({
         baseUrl = API_URL,
@@ -34,11 +46,27 @@ export class ReflectionsAiManager {
 
     async getInlineCompletion(
         reflectionId: string,
-        request: ContentGenerationRequest,
+        request: InlineCompletionRequest,
         signal?: AbortSignal,
-    ): Promise<JournalSuggestion[]> {
+    ): Promise<string> {
+        this.assertAvailable();
 
-        return this.getSentenceStarters(reflectionId, request, signal);
+        const response = await this.request(
+            `${this.baseUrl}/reflection/${encodeURIComponent(reflectionId)}/intelligence/inline-completion`,
+            request,
+            signal,
+        );
+
+        if (!response.ok) {
+            throw await this.responseError(response, "AI inline completion service is unavailable");
+        }
+
+        const payload: unknown = await response.json();
+        if (typeof payload !== "string" || payload.trim().length === 0 || payload.length > 100) {
+            throw new ReflectionsAiError("AI inline completion service returned an invalid response");
+        }
+
+        return payload;
     }
 
     async getSentenceStarters(
@@ -46,54 +74,80 @@ export class ReflectionsAiManager {
         request: ContentGenerationRequest,
         signal?: AbortSignal,
     ): Promise<JournalSuggestion[]> {
+        this.assertAvailable();
+
+        const response = await this.request(
+            `${this.baseUrl}/reflection/${encodeURIComponent(reflectionId)}/intelligence/sentence-starters`,
+            request,
+            signal,
+        );
+
+        if (!response.ok) {
+            throw await this.responseError(response, "AI sentence starter service is unavailable");
+        }
+
+        const payload: unknown = await response.json();
+        if (!this.isSentenceStartersResponse(payload)) {
+            throw new ReflectionsAiError("AI sentence starter service returned an invalid response");
+        }
+
+        return payload;
+    }
+
+    private async request(url: string, body: object, signal?: AbortSignal): Promise<Response> {
         const requestController = new AbortController();
         const abortRequest = () => requestController.abort(signal?.reason);
         const timeout = window.setTimeout(() => requestController.abort(), this.timeoutMs);
 
-        if (signal?.aborted) {
-            abortRequest();
-        } else {
-            signal?.addEventListener("abort", abortRequest, {once: true});
-        }
+        if (signal?.aborted) abortRequest();
+        else signal?.addEventListener("abort", abortRequest, {once: true});
 
         try {
-            const response = await this.fetcher(
-                `${this.baseUrl}/reflection/${encodeURIComponent(reflectionId)}/intelligence/sentence-starters`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify(request),
-                    signal: requestController.signal,
-                },
-            );
-
-            if (!response.ok) {
-                throw new ReflectionsAiError(
-                    await readJsonError(response, "AI sentence starter service is unavailable"),
-                );
-            }
-
-            const payload: unknown = await response.json();
-            if (!this.isSentenceStartersResponse(payload)) {
-                throw new ReflectionsAiError("AI sentence starter service returned an invalid response");
-            }
-
-            return payload;
-        } catch (error) {
-            if (requestController.signal.aborted || error instanceof ReflectionsAiError) {
-                throw error;
-            }
-
-            throw new ReflectionsAiError("Unable to request AI sentence starters", {
-                cause: error,
+            return await this.fetcher(url, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                credentials: "include",
+                body: JSON.stringify(body),
+                signal: requestController.signal,
             });
+        } catch (error) {
+            if (requestController.signal.aborted) throw error;
+            throw new ReflectionsAiError("Unable to request AI suggestions", {cause: error});
         } finally {
             window.clearTimeout(timeout);
             signal?.removeEventListener("abort", abortRequest);
         }
+    }
+
+    private assertAvailable() {
+        if (this.cooldownUntil <= Date.now()) return;
+        throw new ReflectionsAiRateLimitError(
+            Math.ceil((this.cooldownUntil - Date.now()) / 1000),
+        );
+    }
+
+    private async responseError(response: Response, fallback: string): Promise<ReflectionsAiError> {
+        if (response.status !== 429) {
+            return new ReflectionsAiError(await readJsonError(response, fallback));
+        }
+
+        let body: unknown;
+        try {
+            body = await response.json();
+        } catch {
+            body = null;
+        }
+
+        const bodyRetryAfter = typeof body === "object" && body !== null && "retryAfterSeconds" in body
+            ? Number(body.retryAfterSeconds)
+            : Number.NaN;
+        const headerRetryAfter = Number(response.headers.get("Retry-After"));
+        const retryAfterSeconds = Math.ceil(
+            bodyRetryAfter > 0 ? bodyRetryAfter : headerRetryAfter > 0 ? headerRetryAfter : 60,
+        );
+
+        this.cooldownUntil = Date.now() + retryAfterSeconds * 1000;
+        return new ReflectionsAiRateLimitError(retryAfterSeconds);
     }
 
     private isSentenceStartersResponse(value: unknown): value is JournalSuggestion[] {
@@ -108,7 +162,8 @@ export class ReflectionsAiManager {
                     suggestion.type === "sentence_starter" &&
                     "text" in suggestion &&
                     typeof suggestion.text === "string" &&
-                    suggestion.text.trim().length > 0,
+                    suggestion.text.trim().length > 0 &&
+                    suggestion.text.length <= 200,
             )
         );
     }
