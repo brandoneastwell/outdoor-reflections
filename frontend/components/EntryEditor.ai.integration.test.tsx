@@ -128,9 +128,8 @@ describe("EntryEditor AI backend integration", () => {
         render(<EntryEditor initEntry={makeEntry()} />);
         await flushPromises();
 
-        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
-        fireEvent.focus(textBlock);
-        await flushPromises();
+        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("I noticed...");
+        expect(textBlock).not.toHaveFocus();
 
         expect(fetchMock).toHaveBeenCalledWith(
             expect.stringMatching(/\/reflection\/current-entry\/intelligence\/sentence-starters$/),
@@ -148,6 +147,7 @@ describe("EntryEditor AI backend integration", () => {
 
         expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
         expect(textBlock).toHaveValue("");
+        fireEvent.focus(textBlock);
         fireEvent.keyDown(textBlock, {key: "Tab"});
         expect(textBlock.value).toBe("I noticed...");
 
@@ -168,13 +168,14 @@ describe("EntryEditor AI backend integration", () => {
         render(<EntryEditor initEntry={makeEntry({content: ["", ""]})} />);
         await flushPromises();
 
-        const textBlocks = screen.getAllByPlaceholderText<HTMLTextAreaElement>("How was your day?");
-        fireEvent.focus(textBlocks[1]);
-        expect(textBlocks[1]).toHaveAttribute("placeholder", "How was your day?");
+        const firstTextBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("I noticed...");
+        const secondTextBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        fireEvent.focus(secondTextBlock);
+        expect(secondTextBlock).toHaveAttribute("placeholder", "How was your day?");
 
-        fireEvent.blur(textBlocks[1]);
-        fireEvent.focus(textBlocks[0]);
-        expect(textBlocks[0]).toHaveAttribute("placeholder", "I noticed...");
+        fireEvent.blur(secondTextBlock);
+        fireEvent.focus(firstTextBlock);
+        expect(firstTextBlock).toHaveAttribute("placeholder", "I noticed...");
     });
 
     it("removes the sentence starter ghost text when the user types", async () => {
@@ -189,7 +190,7 @@ describe("EntryEditor AI backend integration", () => {
         render(<EntryEditor initEntry={makeEntry()} />);
         await flushPromises();
 
-        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("I noticed...");
         fireEvent.focus(textBlock);
         expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
 

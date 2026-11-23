@@ -136,7 +136,6 @@ export default function TextArea({ focus }: TextAreaProps) {
                             onFocus={() => onTextBlockFocus(index)}
                             onBlur={() => onTextBlockBlur(index)}
                             sentenceStarter={
-                                focusedTextBlockIndex === index &&
                                 index === 0 &&
                                 line.text.trim() === ""
                                     ? aiState.sentence_starters[0] ?? currentEntrySentenceStarter
