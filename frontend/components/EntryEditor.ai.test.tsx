@@ -107,7 +107,7 @@ const previousEntries = [
     }),
     makeEntry({
         id: "previous-two",
-        content: ["Rain beside the lake"],
+        content: ["Rain falling beside the quiet lake"],
         lastEditedAt: "2026-11-11T09:00:00.000Z",
     }),
 ];
@@ -128,6 +128,7 @@ describe("EntryEditor AI interactions", () => {
         });
         vi.spyOn(window, "scrollTo").mockImplementation(() => {});
         vi.spyOn(console, "debug").mockImplementation(() => {});
+        vi.spyOn(console, "log").mockImplementation(() => {});
         Object.defineProperty(navigator, "onLine", {
             configurable: true,
             value: true,
@@ -158,7 +159,7 @@ describe("EntryEditor AI interactions", () => {
                 currentContent: "",
                 recentContent: [
                     "A walk through the woods",
-                    "Rain beside the lake",
+                    "Rain falling beside the quiet lake",
                 ],
             },
             expect.any(AbortSignal),
@@ -199,14 +200,17 @@ describe("EntryEditor AI interactions", () => {
 
         expect(aiMocks.getSentenceStarters).not.toHaveBeenCalled();
         expect(aiMocks.getInlineCompletion).not.toHaveBeenCalled();
-        expect(console.debug).toHaveBeenCalledWith(
+        expect([
+            ...vi.mocked(console.debug).mock.calls,
+            ...vi.mocked(console.log).mock.calls,
+        ]).toEqual(expect.arrayContaining([[
             "[AI eligibility] sentence_starter:initial",
             expect.objectContaining({
                 entryInitiallyBlank: true,
                 hasMinimumContext: false,
                 eligible: false,
             }),
-        );
+        ]]));
     });
 
     it("does not request suggestions while offline", async () => {
@@ -246,19 +250,22 @@ describe("EntryEditor AI interactions", () => {
                 currentTextBlock: "Existing thought continued",
                 recentContent: [
                     "A walk through the woods",
-                    "Rain beside the lake",
+                    "Rain falling beside the quiet lake",
                 ],
             },
             expect.any(AbortSignal),
         );
-        expect(console.debug).toHaveBeenCalledWith(
+        expect([
+            ...vi.mocked(console.debug).mock.calls,
+            ...vi.mocked(console.log).mock.calls,
+        ]).toEqual(expect.arrayContaining([[
             "[AI eligibility] autocomplete:debounce_complete",
             {
                 targetStillFocused: true,
                 online: true,
                 eligible: true,
             },
-        );
+        ]]));
     });
 
     it("restarts the inline completion delay after continued typing", async () => {

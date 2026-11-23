@@ -75,7 +75,7 @@ const previousEntries = [
     }),
     makeEntry({
         id: "previous-two",
-        content: ["Rain beside the lake"],
+        content: ["Rain falling beside the quiet lake"],
         lastEditedAt: "2026-11-11T09:00:00.000Z",
     }),
 ];
@@ -104,6 +104,7 @@ describe("EntryEditor AI backend integration", () => {
         databaseMocks.getAll.mockReset().mockResolvedValue(previousEntries);
         databaseMocks.saveToLocalDB.mockReset().mockResolvedValue("current-entry");
         fetchMock.mockReset();
+        vi.stubGlobal("fetch", fetchMock);
     });
 
     afterEach(() => {
@@ -128,7 +129,6 @@ describe("EntryEditor AI backend integration", () => {
         await flushPromises();
 
         const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
-        expect(screen.queryByRole("button", {name: "Today I felt..."})).not.toBeInTheDocument();
         fireEvent.focus(textBlock);
         await flushPromises();
 
@@ -140,17 +140,16 @@ describe("EntryEditor AI backend integration", () => {
                     currentContent: "",
                     recentContent: [
                         "A walk through the woods",
-                        "Rain beside the lake",
+                        "Rain falling beside the quiet lake",
                     ],
                 }),
             }),
         );
 
-        fireEvent.blur(textBlock);
-        expect(screen.queryByRole("button", {name: "Today I felt..."})).not.toBeInTheDocument();
-        fireEvent.focus(textBlock);
-        fireEvent.click(screen.getByRole("button", {name: "Today I felt..."}));
-        expect(textBlock.value).toBe("Today I felt...");
+        expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
+        expect(textBlock).toHaveValue("");
+        fireEvent.keyDown(textBlock, {key: "Tab"});
+        expect(textBlock.value).toBe("I noticed...");
     });
 
     it("shows sentence starters only for the first empty block", async () => {
@@ -167,11 +166,49 @@ describe("EntryEditor AI backend integration", () => {
 
         const textBlocks = screen.getAllByPlaceholderText<HTMLTextAreaElement>("How was your day?");
         fireEvent.focus(textBlocks[1]);
-        expect(screen.queryByRole("button", {name: "I noticed..."})).not.toBeInTheDocument();
+        expect(textBlocks[1]).toHaveAttribute("placeholder", "How was your day?");
 
         fireEvent.blur(textBlocks[1]);
         fireEvent.focus(textBlocks[0]);
-        expect(screen.getByRole("button", {name: "I noticed..."})).toBeInTheDocument();
+        expect(textBlocks[0]).toHaveAttribute("placeholder", "I noticed...");
+    });
+
+    it("removes the sentence starter ghost text when the user types", async () => {
+        fetchMock.mockResolvedValue(
+            new Response(JSON.stringify([
+                {type: "sentence_starter", text: "I noticed..."},
+                {type: "sentence_starter", text: "Today I felt..."},
+                {type: "sentence_starter", text: "Next time..."},
+            ]), {status: 200}),
+        );
+
+        render(<EntryEditor initEntry={makeEntry()} />);
+        await flushPromises();
+
+        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        fireEvent.focus(textBlock);
+        expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
+
+        fireEvent.change(textBlock, {target: {value: "My"}});
+        expect(textBlock).toHaveValue("My");
+        expect(textBlock).toHaveAttribute("placeholder", "How was your day?");
+    });
+
+    it("keeps the default placeholder when sentence starters are unavailable", async () => {
+        fetchMock.mockResolvedValue(
+            new Response(JSON.stringify({message: "AI sentence starter service is unavailable"}), {
+                status: 503,
+                headers: {"Content-Type": "application/json"},
+            }),
+        );
+
+        render(<EntryEditor initEntry={makeEntry()} />);
+        await flushPromises();
+
+        const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        fireEvent.focus(textBlock);
+        expect(textBlock).toHaveValue("");
+        expect(textBlock).toHaveAttribute("placeholder", "How was your day?");
     });
 
     it("sends typed content and accepts the inline response returned by NestJS", async () => {
@@ -203,7 +240,7 @@ describe("EntryEditor AI backend integration", () => {
                     currentTextBlock: "Existing thought continued",
                     recentContent: [
                         "A walk through the woods",
-                        "Rain beside the lake",
+                        "Rain falling beside the quiet lake",
                     ],
                 }),
             }),

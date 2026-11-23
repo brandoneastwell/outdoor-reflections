@@ -13,7 +13,7 @@ interface TextAreaItemProps {
     onChange: (id: string, value: string) => void;
     onFocus: () => void;
     onBlur: () => void;
-    sentenceStarters?: string[];
+    sentenceStarter?: string;
     autocomplete?: string;
     onAcceptSentenceStarter?: (suggestion: string) => void;
     onAcceptAutocomplete?: (suggestion: string) => void;
@@ -29,7 +29,7 @@ export default function TextAreaItem({
     onChange,
     onFocus,
     onBlur,
-    sentenceStarters = [],
+    sentenceStarter,
     autocomplete,
     onAcceptSentenceStarter = () => {},
     onAcceptAutocomplete = () => {},
@@ -46,6 +46,12 @@ export default function TextAreaItem({
     });
     const showDragHandle = selected || isDragging;
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (sentenceStarter && line.text.length === 0 && event.key === "Tab") {
+            event.preventDefault();
+            onAcceptSentenceStarter(sentenceStarter);
+            return;
+        }
+
         if (autocomplete && event.key === "Tab") {
             event.preventDefault();
             onAcceptAutocomplete(autocomplete);
@@ -91,8 +97,9 @@ export default function TextAreaItem({
             <textarea
                 name="content"
                 className={
-                    "resize-none field-sizing-content bg-transparent font-mono outline-none outline-0 text-black placeholder-black " +
+                    "resize-none field-sizing-content bg-transparent font-mono outline-none outline-0 text-black " +
                     "text-base leading-6.75 h-auto w-full overflow-hidden pl-5 " +
+                    (sentenceStarter ? "placeholder:text-black/50 " : "placeholder:text-black ") +
                     (focus ? "" : " pointer-events-none")
                 }
                 value={line.text}
@@ -100,25 +107,10 @@ export default function TextAreaItem({
                 onChange={(e) => onChange(line.id, e.target.value)}
                 onFocus={onFocus}
                 onBlur={onBlur}
-                placeholder="How was your day?"
+                placeholder={sentenceStarter ?? "How was your day?"}
                 disabled={!focus}
                 spellCheck={false}
             />
-            {sentenceStarters.length > 0 && (
-                <div className="mb-1 ml-5 flex flex-col gap-1" aria-label="AI sentence starters">
-                    {sentenceStarters.map((suggestion) => (
-                        <button
-                            key={suggestion}
-                            type="button"
-                            className="rounded px-1 text-left font-mono text-xs text-rose/70 hover:bg-rose/10 hover:text-rose"
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => onAcceptSentenceStarter(suggestion)}
-                        >
-                            {suggestion}
-                        </button>
-                    ))}
-                </div>
-            )}
             {autocomplete && (
                 <button
                     type="button"

@@ -128,13 +128,13 @@ export default function TextArea({ focus }: TextAreaProps) {
                             onChange={handleChange}
                             onFocus={() => onTextBlockFocus(index)}
                             onBlur={() => onTextBlockBlur(index)}
-                            sentenceStarters={
+                            sentenceStarter={
                                 focusedTextBlockIndex === index &&
                                 aiState.targetBlockIndex === index &&
                                 index === 0 &&
                                 line.text.trim() === ""
-                                    ? aiState.sentence_starters
-                                    : []
+                                    ? aiState.sentence_starters[0]
+                                    : undefined
                             }
                             autocomplete={
                                 focusedTextBlockIndex === index && aiState.targetBlockIndex === index

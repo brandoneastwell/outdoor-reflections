@@ -41,20 +41,34 @@ describe("TextAreaItem", () => {
         expect(dragHandle).toHaveAttribute("tabindex", "0");
     });
 
-    it("offers sentence starters without inserting one automatically", () => {
+    it("shows the first sentence starter as ghost text and commits it with Tab", () => {
         const onAcceptSentenceStarter = vi.fn();
         render(
             <TextAreaItem
                 {...defaultProps}
                 line={{...defaultProps.line, text: ""}}
-                sentenceStarters={["I noticed...", "Today I felt...", "Next time..."]}
+                sentenceStarter="I noticed..."
                 onAcceptSentenceStarter={onAcceptSentenceStarter}
             />,
         );
 
+        const textBlock = screen.getByRole("textbox");
+        expect(textBlock).toHaveValue("");
+        expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
+        expect(textBlock).toHaveClass("placeholder:text-black/50");
         expect(onAcceptSentenceStarter).not.toHaveBeenCalled();
-        fireEvent.click(screen.getByRole("button", {name: "Today I felt..."}));
-        expect(onAcceptSentenceStarter).toHaveBeenCalledWith("Today I felt...");
+        textBlock.focus();
+        expect(textBlock).toHaveFocus();
+        expect((textBlock as HTMLTextAreaElement).selectionStart).toBe(0);
+        fireEvent.keyDown(textBlock, {key: "Tab"});
+        expect(onAcceptSentenceStarter).toHaveBeenCalledWith("I noticed...");
+        expect(defaultProps.onKeyDown).not.toHaveBeenCalled();
+    });
+
+    it("uses the default placeholder when no sentence starter is available", () => {
+        render(<TextAreaItem {...defaultProps} line={{...defaultProps.line, text: ""}} />);
+
+        expect(screen.getByRole("textbox")).toHaveAttribute("placeholder", "How was your day?");
     });
 
     it("accepts inline completion with Tab and dismisses it with Escape", () => {
