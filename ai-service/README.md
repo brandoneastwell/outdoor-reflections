@@ -24,14 +24,22 @@ starters:
 ```dotenv
 GROQ_API_KEY=your-groq-api-key
 GROQ_MODEL=openai/gpt-oss-20b
+GROQ_MAX_INPUT_TOKENS=1500
 GROQ_MAX_COMPLETION_TOKENS=256
 GROQ_REASONING_EFFORT=low
 ```
 
 `GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`.
+`GROQ_MAX_INPUT_TOKENS` defaults to `1500`,
 `GROQ_MAX_COMPLETION_TOKENS` defaults to `256`, and
 `GROQ_REASONING_EFFORT` defaults to `low`. Supported reasoning effort values
 are `low`, `medium`, and `high`.
+
+The input-token limit applies to the complete Groq prompt, including system
+instructions and the structured-output schema. If journal context exceeds the
+budget, only the temporary AI prompt is shortened; stored journal content is
+not changed. `previous_entries` must be ordered newest first so that the oldest
+context is removed first.
 
 ## Run directly with Python
 

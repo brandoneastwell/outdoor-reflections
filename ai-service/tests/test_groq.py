@@ -101,6 +101,7 @@ def test_generate_sentence_starters_with_structured_output(
     )
     assert usage_record.operation == "sentence_starters"
     assert usage_record.model == "test-model"
+    assert 0 < usage_record.estimated_input_tokens <= 1_500
     assert usage_record.prompt_tokens == 120
     assert usage_record.completion_tokens == 30
     assert usage_record.total_tokens == 150
@@ -151,6 +152,7 @@ def test_generate_inline_completion_with_structured_output(
         record for record in caplog.records if record.event == "groq_token_usage"
     )
     assert usage_record.operation == "inline_completion"
+    assert 0 < usage_record.estimated_input_tokens <= 1_500
     assert usage_record.total_tokens == 150
     assert "As I reached the old oak" not in caplog.text
 
@@ -179,6 +181,7 @@ def test_records_missing_token_usage_without_failing_generation(
         if record.event == "groq_token_usage_missing"
     )
     assert missing_record.operation == "inline_completion"
+    assert 0 < missing_record.estimated_input_tokens <= 1_500
 
 
 @pytest.mark.parametrize(

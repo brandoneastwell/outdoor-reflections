@@ -9,6 +9,7 @@ from app.providers.groq import (
     GroqService,
     GroqServiceError,
 )
+from app.providers.token_budget import DEFAULT_MAX_INPUT_TOKENS
 
 
 class ContentGenerationServiceUnavailableError(RuntimeError):
@@ -57,6 +58,12 @@ def get_content_generation_service() -> ContentGenerationService:
         return ContentGenerationService()
 
     model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
+    max_input_tokens = int(
+        os.getenv(
+            "GROQ_MAX_INPUT_TOKENS",
+            str(DEFAULT_MAX_INPUT_TOKENS),
+        ),
+    )
     max_completion_tokens = int(
         os.getenv(
             "GROQ_MAX_COMPLETION_TOKENS",
@@ -71,6 +78,7 @@ def get_content_generation_service() -> ContentGenerationService:
         groq_service=GroqService(
             api_key=api_key,
             model=model,
+            max_input_tokens=max_input_tokens,
             max_completion_tokens=max_completion_tokens,
             reasoning_effort=reasoning_effort,
         ),

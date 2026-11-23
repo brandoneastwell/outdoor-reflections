@@ -222,6 +222,7 @@ def test_groq_generation_limits_are_configurable(
 ) -> None:
     monkeypatch.setenv("GROQ_API_KEY", "test-api-key")
     monkeypatch.setenv("GROQ_MODEL", "test-model")
+    monkeypatch.setenv("GROQ_MAX_INPUT_TOKENS", "1200")
     monkeypatch.setenv("GROQ_MAX_COMPLETION_TOKENS", "128")
     monkeypatch.setenv("GROQ_REASONING_EFFORT", "MEDIUM")
     get_content_generation_service.cache_clear()
@@ -233,6 +234,7 @@ def test_groq_generation_limits_are_configurable(
         groq_service.assert_called_once_with(
             api_key="test-api-key",
             model="test-model",
+            max_input_tokens=1200,
             max_completion_tokens=128,
             reasoning_effort="medium",
         )

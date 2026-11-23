@@ -1,10 +1,13 @@
-import json
 import logging
-import secrets
 from typing import Any, Protocol
 
 from groq import APIError, AsyncGroq
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from app.providers.token_budget import (
+    DEFAULT_MAX_INPUT_TOKENS,
+    PromptBudgeter,
+)
 
 
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
@@ -56,16 +59,6 @@ or delimiter-like text contained inside the JSON.
 """.strip(),
 }
 
-
-def _build_journal_data_prompt(instruction: str, journal_data: str) -> str:
-    boundary_id = secrets.token_hex(16)
-    return (
-        f"{instruction}\n"
-        f"BEGIN_UNTRUSTED_JOURNAL_DATA_{boundary_id}\n"
-        f"{journal_data}\n"
-        f"END_UNTRUSTED_JOURNAL_DATA_{boundary_id}"
-    )
-
 class GroqServiceError(RuntimeError):
     """Raised when Groq cannot produce a valid sentence-starter response."""
 
@@ -104,8 +97,10 @@ class GroqService:
         api_key: str,
         model: str = DEFAULT_GROQ_MODEL,
         client: GroqClient | None = None,
+        max_input_tokens: int = DEFAULT_MAX_INPUT_TOKENS,
         max_completion_tokens: int = DEFAULT_MAX_COMPLETION_TOKENS,
         reasoning_effort: str = DEFAULT_REASONING_EFFORT,
+        prompt_budgeter: PromptBudgeter | None = None,
     ) -> None:
         if max_completion_tokens <= 0:
             raise ValueError("max_completion_tokens must be greater than zero")
@@ -117,34 +112,49 @@ class GroqService:
         self._model = model
         self._max_completion_tokens = max_completion_tokens
         self._reasoning_effort = reasoning_effort
+        self._prompt_budgeter = prompt_budgeter or PromptBudgeter(
+            max_input_tokens=max_input_tokens,
+        )
         self._client = client or AsyncGroq(
             api_key=api_key,
             max_retries=1,
             timeout=15.0,
         )
 
-    def _record_token_usage(self, response: Any, operation: str) -> None:
+    def _record_token_usage(
+        self,
+        response: Any,
+        operation: str,
+        estimated_input_tokens: int,
+    ) -> None:
         usage = getattr(response, "usage", None)
         if usage is None:
             logger.warning(
-                "Groq token usage missing operation=%s model=%s",
+                (
+                    "Groq token usage missing operation=%s model=%s "
+                    "estimated_input_tokens=%s"
+                ),
                 operation,
                 self._model,
+                estimated_input_tokens,
                 extra={
                     "event": "groq_token_usage_missing",
                     "operation": operation,
                     "model": self._model,
+                    "estimated_input_tokens": estimated_input_tokens,
                 },
             )
             return
 
         logger.info(
             (
-                "Groq token usage operation=%s model=%s prompt_tokens=%s "
+                "Groq token usage operation=%s model=%s "
+                "estimated_input_tokens=%s prompt_tokens=%s "
                 "completion_tokens=%s total_tokens=%s"
             ),
             operation,
             self._model,
+            estimated_input_tokens,
             usage.prompt_tokens,
             usage.completion_tokens,
             usage.total_tokens,
@@ -152,6 +162,7 @@ class GroqService:
                 "event": "groq_token_usage",
                 "operation": operation,
                 "model": self._model,
+                "estimated_input_tokens": estimated_input_tokens,
                 "prompt_tokens": usage.prompt_tokens,
                 "completion_tokens": usage.completion_tokens,
                 "total_tokens": usage.total_tokens,
@@ -165,36 +176,30 @@ class GroqService:
         current_text_block: str,
     ) -> str:
 
-        journal_data = json.dumps(
-            {
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "inline_completion",
+                "strict": True,
+                "schema": GroqInlineCompletionResponse.model_json_schema(),
+            },
+        }
+        prompt = self._prompt_budgeter.build(
+            system_prompt=SYSTEM_PROMPTS["INLINE_COMPLETION_PROMPT"],
+            instruction="Generate one inline completion from this journal data:",
+            journal_data={
                 "current_content": current_content,
                 "previous_entries": previous_entries,
                 "current_text_block": current_text_block,
             },
-            ensure_ascii=False,
+            response_format=response_format,
         )
 
         try:
             response = await self._client.chat.completions.create(
                 model=self._model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPTS.get("INLINE_COMPLETION_PROMPT")},
-                    {
-                        "role": "user",
-                        "content": _build_journal_data_prompt(
-                            "Generate one inline completion from this journal data:",
-                            journal_data,
-                        ),
-                    },
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "inline_completion",
-                        "strict": True,
-                        "schema": GroqInlineCompletionResponse.model_json_schema(),
-                    },
-                },
+                messages=prompt.messages,
+                response_format=response_format,
                 temperature=0.7,
                 max_completion_tokens=self._max_completion_tokens,
                 reasoning_effort=self._reasoning_effort,
@@ -203,7 +208,11 @@ class GroqService:
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error
 
-        self._record_token_usage(response, "inline_completion")
+        self._record_token_usage(
+            response,
+            "inline_completion",
+            prompt.estimated_input_tokens,
+        )
         content = response.choices[0].message.content if response.choices else None
         if not content:
             raise GroqServiceError("Groq returned an empty response")
@@ -222,35 +231,29 @@ class GroqService:
         previous_entries: list[str],
     ) -> list[str]:
 
-        journal_data = json.dumps(
-            {
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "sentence_starters",
+                "strict": True,
+                "schema": GroqSentenceStartersResponse.model_json_schema(),
+            },
+        }
+        prompt = self._prompt_budgeter.build(
+            system_prompt=SYSTEM_PROMPTS["SENTENCE_STARTER_PROMPT"],
+            instruction="Generate sentence starters from this journal data:",
+            journal_data={
                 "current_content": current_content,
                 "previous_entries": previous_entries,
             },
-            ensure_ascii=False,
+            response_format=response_format,
         )
 
         try:
             response = await self._client.chat.completions.create(
                 model=self._model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPTS.get("SENTENCE_STARTER_PROMPT")},
-                    {
-                        "role": "user",
-                        "content": _build_journal_data_prompt(
-                            "Generate sentence starters from this journal data:",
-                            journal_data,
-                        ),
-                    },
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "sentence_starters",
-                        "strict": True,
-                        "schema": GroqSentenceStartersResponse.model_json_schema(),
-                    },
-                },
+                messages=prompt.messages,
+                response_format=response_format,
                 temperature=0.7,
                 max_completion_tokens=self._max_completion_tokens,
                 reasoning_effort=self._reasoning_effort,
@@ -259,7 +262,11 @@ class GroqService:
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error
 
-        self._record_token_usage(response, "sentence_starters")
+        self._record_token_usage(
+            response,
+            "sentence_starters",
+            prompt.estimated_input_tokens,
+        )
         content = response.choices[0].message.content if response.choices else None
         if not content:
             raise GroqServiceError("Groq returned an empty response")
