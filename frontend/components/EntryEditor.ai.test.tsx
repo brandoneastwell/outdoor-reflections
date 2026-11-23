@@ -127,6 +127,7 @@ describe("EntryEditor AI interactions", () => {
             disconnect() {}
         });
         vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+        vi.spyOn(console, "debug").mockImplementation(() => {});
         Object.defineProperty(navigator, "onLine", {
             configurable: true,
             value: true,
@@ -198,6 +199,14 @@ describe("EntryEditor AI interactions", () => {
 
         expect(aiMocks.getSentenceStarters).not.toHaveBeenCalled();
         expect(aiMocks.getInlineCompletion).not.toHaveBeenCalled();
+        expect(console.debug).toHaveBeenCalledWith(
+            "[AI eligibility] sentence_starter:initial",
+            expect.objectContaining({
+                entryInitiallyBlank: true,
+                hasMinimumContext: false,
+                eligible: false,
+            }),
+        );
     });
 
     it("does not request suggestions while offline", async () => {
@@ -241,6 +250,14 @@ describe("EntryEditor AI interactions", () => {
                 ],
             },
             expect.any(AbortSignal),
+        );
+        expect(console.debug).toHaveBeenCalledWith(
+            "[AI eligibility] autocomplete:debounce_complete",
+            {
+                targetStillFocused: true,
+                online: true,
+                eligible: true,
+            },
         );
     });
 

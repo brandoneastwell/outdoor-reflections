@@ -17,6 +17,18 @@ import type {EntryAiState} from "@/types/intelligenceTypes";
 
 const db = new Database();
 
+type AiFeature = "sentence_starter" | "autocomplete";
+
+const logAiEligibility = (
+    feature: AiFeature,
+    stage: string,
+    checks: Record<string, boolean>,
+) => {
+    const eligible = Object.values(checks).every(Boolean);
+    console.debug(`[AI eligibility] ${feature}:${stage}`, {...checks, eligible});
+    return eligible;
+};
+
 const isEntryBlank = (entry: Entry) => {
     return (
         entry.title.trim() === "" &&
@@ -97,7 +109,14 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
         targetBlockIndex: number,
         currentTextBlock?: string,
     ): Promise<void> => {
-        if (!navigator.onLine || recentContent.length <= 1) return;
+        const requestChecks: Record<string, boolean> = {
+            online: navigator.onLine,
+            hasMinimumContext: recentContent.length > 1,
+        };
+        if (type === "autocomplete") {
+            requestChecks.currentTextBlockNotEmpty = Boolean(currentTextBlock);
+        }
+        if (!logAiEligibility(type, "request", requestChecks)) return;
 
         aiRequestRef.current?.abort();
 
@@ -123,11 +142,11 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     requestController.signal,
                 );
 
-                if (
-                    !requestController.signal.aborted &&
-                    aiRequestIdRef.current === requestId &&
-                    focusedTextBlockIndexRef.current === targetBlockIndex
-                ) {
+                if (logAiEligibility("autocomplete", "response", {
+                    requestActive: !requestController.signal.aborted,
+                    latestRequest: aiRequestIdRef.current === requestId,
+                    targetStillFocused: focusedTextBlockIndexRef.current === targetBlockIndex,
+                })) {
                     setAiState({
                         autocomplete: completion,
                         status: "ready",
@@ -145,7 +164,10 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     requestController.signal,
             );
 
-            if (!requestController.signal.aborted && aiRequestIdRef.current === requestId) {
+            if (logAiEligibility("sentence_starter", "response", {
+                requestActive: !requestController.signal.aborted,
+                latestRequest: aiRequestIdRef.current === requestId,
+            })) {
                 setAiState({
                     autocomplete: undefined,
                     status: "ready",
@@ -232,16 +254,16 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     }, [entry.id]);
 
     useEffect(() => {
-        const firstBlockIsEmpty = entry.content.length > 0 && entry.content[0].trim() === "";
-        if (
-            !wasInitiallyBlankRef.current ||
-            initialSuggestionRequestedRef.current ||
-            !firstBlockIsEmpty ||
-            !isOnline ||
-            recentContent.length <= 1
-        ) {
-            return;
-        }
+        const firstBlockExists = entry.content.length > 0;
+        const eligible = logAiEligibility("sentence_starter", "initial", {
+            entryInitiallyBlank: wasInitiallyBlankRef.current,
+            notAlreadyRequested: !initialSuggestionRequestedRef.current,
+            firstBlockExists,
+            firstBlockEmpty: firstBlockExists && entry.content[0].trim() === "",
+            online: isOnline,
+            hasMinimumContext: recentContent.length > 1,
+        });
+        if (!eligible) return;
 
         initialSuggestionRequestedRef.current = true;
         void requestContentGeneration("sentence_starter", "", recentContent, 0);
@@ -288,11 +310,18 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
         clearAiSuggestions();
 
         const currentBlock = content[index]?.trim() ?? "";
-        if (!isOnline || recentContent.length <= 1 || currentBlock.length === 0) return;
+        if (!logAiEligibility("autocomplete", "schedule", {
+            online: isOnline,
+            hasMinimumContext: recentContent.length > 1,
+            currentBlockNotEmpty: currentBlock.length > 0,
+        })) return;
 
         autocompleteTimeoutRef.current = setTimeout(() => {
             autocompleteTimeoutRef.current = null;
-            if (focusedTextBlockIndexRef.current !== index || !navigator.onLine) return;
+            if (!logAiEligibility("autocomplete", "debounce_complete", {
+                targetStillFocused: focusedTextBlockIndexRef.current === index,
+                online: navigator.onLine,
+            })) return;
 
             void requestContentGeneration(
                 "autocomplete",

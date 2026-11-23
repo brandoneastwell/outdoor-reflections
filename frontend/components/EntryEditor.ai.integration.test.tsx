@@ -96,6 +96,7 @@ describe("EntryEditor AI backend integration", () => {
             disconnect() {}
         });
         vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+        vi.spyOn(console, "debug").mockImplementation(() => {});
         Object.defineProperty(navigator, "onLine", {
             configurable: true,
             value: true,
