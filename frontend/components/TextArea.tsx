@@ -34,6 +34,8 @@ export default function TextArea({ focus }: TextAreaProps) {
         onTextBlockBlur,
         onTextBlockChange,
         focusedTextBlockIndex,
+        aiState,
+        clearAiSuggestions,
     } = useContext(EntryContext)
     const isMounted = useSyncExternalStore(
         subscribeToClient,
@@ -98,6 +100,20 @@ export default function TextArea({ focus }: TextAreaProps) {
         );
     };
 
+    const acceptSuggestion = (id: string, suggestion: string, append: boolean) => {
+        const nextContent = content.map((line) => {
+            if (line.id !== id) return line;
+
+            const separator = append && line.text && !line.text.endsWith(" ") && !suggestion.startsWith(" ")
+                ? " "
+                : "";
+            return {...line, text: append ? line.text + separator + suggestion : suggestion};
+        });
+
+        updateContent(nextContent);
+        clearAiSuggestions();
+    };
+
     return (
         <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="absolute inset-0 h-full w-full">
@@ -112,6 +128,22 @@ export default function TextArea({ focus }: TextAreaProps) {
                             onChange={handleChange}
                             onFocus={() => onTextBlockFocus(index)}
                             onBlur={() => onTextBlockBlur(index)}
+                            sentenceStarters={
+                                focusedTextBlockIndex === index &&
+                                aiState.targetBlockIndex === index &&
+                                index === 0 &&
+                                line.text.trim() === ""
+                                    ? aiState.sentence_starters
+                                    : []
+                            }
+                            autocomplete={
+                                focusedTextBlockIndex === index && aiState.targetBlockIndex === index
+                                    ? aiState.autocomplete
+                                    : undefined
+                            }
+                            onAcceptSentenceStarter={(suggestion) => acceptSuggestion(line.id, suggestion, false)}
+                            onAcceptAutocomplete={(suggestion) => acceptSuggestion(line.id, suggestion, true)}
+                            onDismissSuggestion={clearAiSuggestions}
                         />
                     ))}
             </div>

@@ -13,6 +13,11 @@ interface TextAreaItemProps {
     onChange: (id: string, value: string) => void;
     onFocus: () => void;
     onBlur: () => void;
+    sentenceStarters?: string[];
+    autocomplete?: string;
+    onAcceptSentenceStarter?: (suggestion: string) => void;
+    onAcceptAutocomplete?: (suggestion: string) => void;
+    onDismissSuggestion?: () => void;
 }
 
 export default function TextAreaItem({
@@ -24,6 +29,11 @@ export default function TextAreaItem({
     onChange,
     onFocus,
     onBlur,
+    sentenceStarters = [],
+    autocomplete,
+    onAcceptSentenceStarter = () => {},
+    onAcceptAutocomplete = () => {},
+    onDismissSuggestion = () => {},
 }: TextAreaItemProps) {
     const {ref, handleRef, isDragging, isDropTarget} = useSortable({
         id: line.id,
@@ -35,6 +45,21 @@ export default function TextAreaItem({
         },
     });
     const showDragHandle = selected || isDragging;
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (autocomplete && event.key === "Tab") {
+            event.preventDefault();
+            onAcceptAutocomplete(autocomplete);
+            return;
+        }
+
+        if (autocomplete && event.key === "Escape") {
+            event.preventDefault();
+            onDismissSuggestion();
+            return;
+        }
+
+        onKeyDown(event);
+    };
 
     return (
         <div
@@ -71,7 +96,7 @@ export default function TextAreaItem({
                     (focus ? "" : " pointer-events-none")
                 }
                 value={line.text}
-                onKeyDown={onKeyDown}
+                onKeyDown={handleKeyDown}
                 onChange={(e) => onChange(line.id, e.target.value)}
                 onFocus={onFocus}
                 onBlur={onBlur}
@@ -79,6 +104,33 @@ export default function TextAreaItem({
                 disabled={!focus}
                 spellCheck={false}
             />
+            {sentenceStarters.length > 0 && (
+                <div className="mb-1 ml-5 flex flex-col gap-1" aria-label="AI sentence starters">
+                    {sentenceStarters.map((suggestion) => (
+                        <button
+                            key={suggestion}
+                            type="button"
+                            className="rounded px-1 text-left font-mono text-xs text-rose/70 hover:bg-rose/10 hover:text-rose"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => onAcceptSentenceStarter(suggestion)}
+                        >
+                            {suggestion}
+                        </button>
+                    ))}
+                </div>
+            )}
+            {autocomplete && (
+                <button
+                    type="button"
+                    className="mb-1 ml-5 block rounded px-1 text-left font-mono text-xs text-rose/60 hover:bg-rose/10 hover:text-rose"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => onAcceptAutocomplete(autocomplete)}
+                    aria-label="Accept AI completion"
+                >
+                    Continue with: {autocomplete}
+                    <span className="ml-2 text-[10px] uppercase tracking-wide">Tab</span>
+                </button>
+            )}
         </div>
     );
 }
