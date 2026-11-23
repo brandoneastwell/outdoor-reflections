@@ -38,4 +38,20 @@ describeLive('ReflectionsAiClient live integration', () => {
       ]),
     );
   }, 30_000);
+
+  it('receives an inline completion from the running Python AI service', async () => {
+    const client = new ReflectionsAiClient();
+    const suggestion = await client.generateInlineCompletion(
+      'Today I returned to the woodland path.',
+      [
+        'Yesterday I watched the light change beside the river.',
+        'Last week I felt calmer after walking along the ridge.',
+      ],
+      'As I reached the old oak, I',
+    );
+
+    expect(suggestion).toEqual(expect.any(String));
+    expect(suggestion.trim()).not.toHaveLength(0);
+    expect(suggestion.length).toBeLessThanOrEqual(100);
+  }, 30_000);
 });
