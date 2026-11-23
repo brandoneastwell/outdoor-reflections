@@ -43,9 +43,16 @@ export default function TextArea({ focus }: TextAreaProps) {
         () => false,
     );
     const [activeLine, setActiveLine] = useState<TextBox | null>(null);
+    const [committedSentenceStarter, setCommittedSentenceStarter] = useState<{
+        entryId: string;
+        suggestion: string;
+    }>();
     const [content, setContent] = useState<TextBox[]>(
         () => entry.content.map((text) => createLine(text))
     );
+    const currentEntrySentenceStarter = committedSentenceStarter?.entryId === entry.id
+        ? committedSentenceStarter.suggestion
+        : undefined;
 
     const updateContent = (nextContent: TextBox[]) => {
         setContent(nextContent);
@@ -130,10 +137,9 @@ export default function TextArea({ focus }: TextAreaProps) {
                             onBlur={() => onTextBlockBlur(index)}
                             sentenceStarter={
                                 focusedTextBlockIndex === index &&
-                                aiState.targetBlockIndex === index &&
                                 index === 0 &&
                                 line.text.trim() === ""
-                                    ? aiState.sentence_starters[0]
+                                    ? aiState.sentence_starters[0] ?? currentEntrySentenceStarter
                                     : undefined
                             }
                             autocomplete={
@@ -141,7 +147,10 @@ export default function TextArea({ focus }: TextAreaProps) {
                                     ? aiState.autocomplete
                                     : undefined
                             }
-                            onAcceptSentenceStarter={(suggestion) => acceptSuggestion(line.id, suggestion, false)}
+                            onAcceptSentenceStarter={(suggestion) => {
+                                setCommittedSentenceStarter({entryId: entry.id, suggestion});
+                                acceptSuggestion(line.id, suggestion, false);
+                            }}
                             onAcceptAutocomplete={(suggestion) => acceptSuggestion(line.id, suggestion, true)}
                             onDismissSuggestion={clearAiSuggestions}
                         />

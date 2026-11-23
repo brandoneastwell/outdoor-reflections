@@ -150,6 +150,10 @@ describe("EntryEditor AI backend integration", () => {
         expect(textBlock).toHaveValue("");
         fireEvent.keyDown(textBlock, {key: "Tab"});
         expect(textBlock.value).toBe("I noticed...");
+
+        fireEvent.change(textBlock, {target: {value: ""}});
+        expect(textBlock).toHaveValue("");
+        expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
     });
 
     it("shows sentence starters only for the first empty block", async () => {
