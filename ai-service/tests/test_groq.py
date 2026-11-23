@@ -4,7 +4,9 @@ import re
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
+from groq import APIError
 
 from app.providers.groq import GroqService, GroqServiceError
 
@@ -134,6 +136,53 @@ def test_rejects_inline_completion_over_100_characters() -> None:
     service = GroqService(api_key="test-api-key", client=client)
 
     with pytest.raises(GroqServiceError, match="invalid response"):
+        asyncio.run(
+            service.generate_inline_completion(
+                current_content="",
+                previous_entries=["A previous outdoor reflection."],
+                current_text_block="The path",
+            ),
+        )
+
+
+def test_rejects_empty_inline_completion_response() -> None:
+    client, _ = build_client("")
+    service = GroqService(api_key="test-api-key", client=client)
+
+    with pytest.raises(GroqServiceError, match="empty response"):
+        asyncio.run(
+            service.generate_inline_completion(
+                current_content="",
+                previous_entries=["A previous outdoor reflection."],
+                current_text_block="The path",
+            ),
+        )
+
+
+def test_rejects_malformed_inline_completion_response() -> None:
+    client, _ = build_client("not-json")
+    service = GroqService(api_key="test-api-key", client=client)
+
+    with pytest.raises(GroqServiceError, match="invalid response"):
+        asyncio.run(
+            service.generate_inline_completion(
+                current_content="",
+                previous_entries=["A previous outdoor reflection."],
+                current_text_block="The path",
+            ),
+        )
+
+
+def test_wraps_inline_completion_api_errors() -> None:
+    client, create = build_client("")
+    create.side_effect = APIError(
+        "Groq is unavailable",
+        request=httpx.Request("POST", "https://api.groq.com"),
+        body=None,
+    )
+    service = GroqService(api_key="test-api-key", client=client)
+
+    with pytest.raises(GroqServiceError, match="request failed"):
         asyncio.run(
             service.generate_inline_completion(
                 current_content="",

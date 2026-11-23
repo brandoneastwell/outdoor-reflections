@@ -48,7 +48,7 @@ class InlineCompletionRequest(BaseModel):
         list[PreviousEntry],
         Field(min_length=1, max_length=10),
     ]
-    current_text_block: Annotated[str, Field(max_length=10_000)]
+    current_text_block: Annotated[str, Field(min_length=1, max_length=10_000)]
 
 
 class InlineCompletionResponse(BaseModel):

@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.main import app
 from app.models.suggestions import (
     InlineCompletion,
+    InlineCompletionRequest,
     InlineCompletionResponse,
     SentenceStartersRequest,
 )
@@ -19,32 +20,40 @@ from app.services.suggestions import (
 client = TestClient(app)
 
 
-class StubSentenceStarterService:
+class StubContentGenerationService:
     def __init__(self) -> None:
-        self.request: SentenceStartersRequest | None = None
+        self.sentence_starter_request: SentenceStartersRequest | None = None
+        self.inline_completion_request: InlineCompletionRequest | None = None
 
     async def generate_sentence_starters(
         self,
         request: SentenceStartersRequest,
     ) -> list[str]:
-        self.request = request
+        self.sentence_starter_request = request
         return [
             "As the path opened ahead, I...",
             "What stayed with me most was...",
             "The changing light made me notice...",
         ]
 
+    async def generate_inline_completion(
+        self,
+        request: InlineCompletionRequest,
+    ) -> str:
+        self.inline_completion_request = request
+        return " noticed how quiet the woodland had become."
+
 
 @pytest.fixture
-def stub_service() -> Iterator[StubSentenceStarterService]:
-    service = StubSentenceStarterService()
+def stub_service() -> Iterator[StubContentGenerationService]:
+    service = StubContentGenerationService()
     app.dependency_overrides[get_content_generation_service] = lambda: service
     yield service
     app.dependency_overrides.clear()
 
 
 def test_generate_sentence_starters(
-    stub_service: StubSentenceStarterService,
+    stub_service: StubContentGenerationService,
 ) -> None:
     response = client.post(
         "/v1/suggestions/sentence-starters",
@@ -74,11 +83,64 @@ def test_generate_sentence_starters(
             },
         ],
     }
-    assert stub_service.request is not None
-    assert stub_service.request.previous_entries == [
+    assert stub_service.sentence_starter_request is not None
+    assert stub_service.sentence_starter_request.previous_entries == [
         "Yesterday I noticed how quiet the woodland had become.",
         "The ridge walk left me feeling calmer.",
     ]
+
+
+def test_generate_inline_completion(
+    stub_service: StubContentGenerationService,
+) -> None:
+    response = client.post(
+        "/v1/suggestions/inline-completion",
+        json={
+            "current_content": "Today I returned to the river path.",
+            "previous_entries": ["The ridge walk left me feeling calmer."],
+            "current_text_block": "As I reached the old oak, I",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "suggestion": " noticed how quiet the woodland had become.",
+    }
+    assert stub_service.inline_completion_request is not None
+    assert stub_service.inline_completion_request.current_text_block == (
+        "As I reached the old oak, I"
+    )
+    assert stub_service.inline_completion_request.previous_entries == [
+        "The ridge walk left me feeling calmer.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "current_content": "Current reflection.",
+            "current_text_block": "The path",
+        },
+        {
+            "current_content": "Current reflection.",
+            "previous_entries": ["A previous outdoor reflection."],
+            "current_text_block": "",
+        },
+        {
+            "current_content": "Current reflection.",
+            "previous_entries": ["A previous outdoor reflection."],
+            "current_text_block": "The path",
+            "unexpected": "field",
+        },
+    ],
+)
+def test_inline_completion_rejects_invalid_requests(
+    payload: dict[str, object],
+) -> None:
+    response = client.post("/v1/suggestions/inline-completion", json=payload)
+
+    assert response.status_code == 422
 
 
 def test_previous_entries_are_required() -> None:
