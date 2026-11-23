@@ -36,9 +36,31 @@ services:
       GROQ_MAX_INPUT_TOKENS: ${GROQ_MAX_INPUT_TOKENS:-1500}
       GROQ_MAX_COMPLETION_TOKENS: ${GROQ_MAX_COMPLETION_TOKENS:-256}
       GROQ_REASONING_EFFORT: ${GROQ_REASONING_EFFORT:-low}
+      GROQ_TOKEN_LIMIT_PER_MINUTE: ${GROQ_TOKEN_LIMIT_PER_MINUTE:-6000}
+      GROQ_TOKEN_LIMIT_PER_DAY: ${GROQ_TOKEN_LIMIT_PER_DAY:-150000}
+      REDIS_URL: redis://redis:6379/0
+
+    depends_on:
+      redis:
+        condition: service_healthy
 
     ports:
       - "8000:8000"
+
+  redis:
+    image: redis:8.2-alpine
+    container_name: outdoor-reflections-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   postgres:
     image: postgres:17
@@ -87,3 +109,4 @@ services:
 volumes:
   postgres_data:
   postgres_test_data:
+  redis_data:

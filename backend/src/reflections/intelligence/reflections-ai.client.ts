@@ -1,4 +1,9 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { JournalSuggestion } from './intelligence.types';
 
 type SentenceStartersResponse = {
@@ -7,6 +12,19 @@ type SentenceStartersResponse = {
 
 const DEFAULT_AI_SERVICE_URL = 'http://localhost:8000';
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+export class AiRateLimitException extends HttpException {
+  constructor(public readonly retryAfterSeconds: number) {
+    super(
+      {
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        code: 'AI_TOKEN_QUOTA_EXCEEDED',
+        retryAfterSeconds,
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+}
 
 @Injectable()
 export class ReflectionsAiClient {
@@ -47,6 +65,9 @@ export class ReflectionsAiClient {
       );
 
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new AiRateLimitException(this.retryAfterSeconds(response));
+        }
         throw new Error(`AI service returned HTTP ${response.status}`);
       }
 
@@ -57,6 +78,7 @@ export class ReflectionsAiClient {
 
       return payload.suggestion;
     } catch (error) {
+      if (error instanceof AiRateLimitException) throw error;
       throw new ServiceUnavailableException(
         'AI inline completion service is unavailable',
         { cause: error },
@@ -95,6 +117,9 @@ export class ReflectionsAiClient {
       );
 
       if (!response.ok) {
+        if (response.status === 429) {
+          throw new AiRateLimitException(this.retryAfterSeconds(response));
+        }
         throw new Error(`AI service returned HTTP ${response.status}`);
       }
 
@@ -105,6 +130,7 @@ export class ReflectionsAiClient {
 
       return payload.suggestions;
     } catch (error) {
+      if (error instanceof AiRateLimitException) throw error;
       throw new ServiceUnavailableException(
         'AI sentence starter service is unavailable',
         { cause: error },
@@ -133,5 +159,12 @@ export class ReflectionsAiClient {
 
   private isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
+  }
+
+  private retryAfterSeconds(response: Response): number {
+    const retryAfter = Number(response.headers.get('Retry-After'));
+    return Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.ceil(retryAfter)
+      : 1;
   }
 }

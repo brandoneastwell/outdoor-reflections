@@ -108,6 +108,27 @@ describe('ReflectionsAiClient', () => {
     ).rejects.toThrow(ServiceUnavailableException);
   });
 
+  it('preserves an AI service rate-limit response', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(null, {
+        status: 429,
+        headers: { 'Retry-After': '42' },
+      }),
+    );
+    const client = new ReflectionsAiClient();
+
+    await expect(
+      client.generateInlineCompletion(
+        'Current draft',
+        ['Previous entry'],
+        'I noticed',
+      ),
+    ).rejects.toMatchObject({
+      retryAfterSeconds: 42,
+      status: 429,
+    });
+  });
+
   it('rejects a malformed AI service response', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ suggestions: [] }), {

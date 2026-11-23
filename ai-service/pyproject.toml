@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.162.4",
     "groq==1.7.0",
+    "redis==8.2.0",
     "uvicorn[standard]==0.52.4",
 ]
 
@@ -23,4 +24,5 @@ dev = [
 testpaths = ["tests"]
 markers = [
     "live_groq: makes paid network requests to the live Groq API",
+    "redis_integration: requires a running Redis service",
 ]

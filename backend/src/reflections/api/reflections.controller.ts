@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   UseGuards,
+  UseFilters,
 } from '@nestjs/common';
 import { ReflectionsService } from '../entries/reflections.service';
 import type { Request } from 'express';
@@ -14,7 +15,9 @@ import { JwtAuthGuard } from '../../auth/jwt-auth-guard';
 import type { ReflectionDto } from '../entries/reflection.types';
 import { SafeUser } from '../../user/user.types';
 import { IntelligenceService } from '../intelligence/intelligence.service';
+import { AiRateLimitExceptionFilter } from './ai-rate-limit.filter';
 
+@UseFilters(AiRateLimitExceptionFilter)
 @Controller('reflection')
 export class ReflectionsController {
   constructor(
@@ -55,12 +58,17 @@ export class ReflectionsController {
 
   @Post(':id/intelligence/inline-completion')
   getInlineCompletion(
-      @Body() body: { currentContent: string; currentTextBlock: string, recentContent: string[] },
+    @Body()
+    body: {
+      currentContent: string;
+      currentTextBlock: string;
+      recentContent: string[];
+    },
   ) {
     return this.intelligenceService.generateInlineCompletion(
-        body.currentContent,
-        body.recentContent,
-        body.currentTextBlock
+      body.currentContent,
+      body.recentContent,
+      body.currentTextBlock,
     );
   }
 }

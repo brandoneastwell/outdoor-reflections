@@ -10,6 +10,7 @@ from app.providers.groq import (
     GroqService,
     GroqServiceError,
 )
+from app.providers.token_quota import get_token_quota
 
 
 class ContentGenerationServiceUnavailableError(RuntimeError):
@@ -81,5 +82,6 @@ def get_content_generation_service() -> ContentGenerationService:
             max_input_tokens=max_input_tokens,
             max_completion_tokens=max_completion_tokens,
             reasoning_effort=reasoning_effort,
+            token_quota=get_token_quota(),
         ),
     )

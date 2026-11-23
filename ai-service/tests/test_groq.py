@@ -9,6 +9,10 @@ import pytest
 from groq import APIError
 
 from app.providers.groq import GroqService, GroqServiceError
+from app.providers.token_quota import (
+    TokenQuotaExceededError,
+    TokenReservation,
+)
 
 
 def extract_delimited_journal_data(content: str) -> dict[str, object]:
@@ -186,6 +190,61 @@ def test_inline_completion_trims_context_without_mutating_the_request(
         record for record in caplog.records if record.event == "groq_token_usage"
     )
     assert usage_record.estimated_input_tokens <= 1_000
+
+
+def test_reserves_and_reconciles_tokens_around_groq_request() -> None:
+    client, _ = build_client(json.dumps({"text": " continued."}))
+    quota = SimpleNamespace(
+        reserve=AsyncMock(return_value=TokenReservation(reserved_tokens=500)),
+        reconcile=AsyncMock(),
+    )
+    service = GroqService(
+        api_key="test-api-key",
+        client=client,
+        token_quota=quota,
+    )
+
+    asyncio.run(
+        service.generate_inline_completion(
+            current_content="Current reflection.",
+            previous_entries=["Previous reflection."],
+            current_text_block="I noticed",
+        ),
+    )
+
+    reserved_tokens = quota.reserve.await_args.args[0]
+    assert 256 < reserved_tokens <= 1_756
+    quota.reconcile.assert_awaited_once_with(
+        TokenReservation(reserved_tokens=500),
+        150,
+    )
+
+
+def test_does_not_call_groq_when_token_quota_is_exhausted() -> None:
+    client, create = build_client(json.dumps({"text": " continued."}))
+    quota = SimpleNamespace(
+        reserve=AsyncMock(
+            side_effect=TokenQuotaExceededError("tokens_per_day", 60),
+        ),
+        reconcile=AsyncMock(),
+    )
+    service = GroqService(
+        api_key="test-api-key",
+        client=client,
+        token_quota=quota,
+    )
+
+    with pytest.raises(TokenQuotaExceededError):
+        asyncio.run(
+            service.generate_inline_completion(
+                current_content="Current reflection.",
+                previous_entries=["Previous reflection."],
+                current_text_block="I noticed",
+            ),
+        )
+
+    create.assert_not_awaited()
+    quota.reconcile.assert_not_awaited()
 
 
 def test_records_missing_token_usage_without_failing_generation(

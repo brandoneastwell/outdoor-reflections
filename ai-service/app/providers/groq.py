@@ -7,6 +7,12 @@ from typing import Any, Protocol
 from groq import APIError, AsyncGroq
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.providers.token_quota import (
+    RedisTokenQuota,
+    TokenQuotaUnavailableError,
+    TokenReservation,
+)
+
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
 DEFAULT_MAX_INPUT_TOKENS = 1_500
 DEFAULT_MAX_COMPLETION_TOKENS = 256
@@ -179,6 +185,7 @@ class GroqService:
         max_input_tokens: int = DEFAULT_MAX_INPUT_TOKENS,
         max_completion_tokens: int = DEFAULT_MAX_COMPLETION_TOKENS,
         reasoning_effort: str = DEFAULT_REASONING_EFFORT,
+        token_quota: RedisTokenQuota | None = None,
     ) -> None:
         if max_input_tokens <= 0:
             raise ValueError("max_input_tokens must be greater than zero")
@@ -193,11 +200,35 @@ class GroqService:
         self._max_input_tokens = max_input_tokens
         self._max_completion_tokens = max_completion_tokens
         self._reasoning_effort = reasoning_effort
+        self._token_quota = token_quota
         self._client = client or AsyncGroq(
             api_key=api_key,
             max_retries=1,
             timeout=15.0,
         )
+
+    async def _reserve_tokens(
+        self,
+        estimated_input_tokens: int,
+    ) -> TokenReservation | None:
+        if self._token_quota is None:
+            return None
+        return await self._token_quota.reserve(
+            estimated_input_tokens + self._max_completion_tokens,
+        )
+
+    async def _reconcile_tokens(
+        self,
+        reservation: TokenReservation | None,
+        response: Any,
+    ) -> None:
+        usage = getattr(response, "usage", None)
+        if self._token_quota is None or reservation is None or usage is None:
+            return
+        try:
+            await self._token_quota.reconcile(reservation, usage.total_tokens)
+        except TokenQuotaUnavailableError:
+            logger.exception("Unable to reconcile Groq token usage")
 
     def _record_token_usage(
         self,
@@ -273,6 +304,7 @@ class GroqService:
             response_format=response_format,
             max_input_tokens=self._max_input_tokens,
         )
+        reservation = await self._reserve_tokens(estimated_input_tokens)
 
         try:
             response = await self._client.chat.completions.create(
@@ -287,6 +319,7 @@ class GroqService:
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error
 
+        await self._reconcile_tokens(reservation, response)
         self._record_token_usage(
             response,
             "inline_completion",
@@ -328,6 +361,7 @@ class GroqService:
             response_format=response_format,
             max_input_tokens=self._max_input_tokens,
         )
+        reservation = await self._reserve_tokens(estimated_input_tokens)
 
         try:
             response = await self._client.chat.completions.create(
@@ -342,6 +376,7 @@ class GroqService:
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error
 
+        await self._reconcile_tokens(reservation, response)
         self._record_token_usage(
             response,
             "sentence_starters",

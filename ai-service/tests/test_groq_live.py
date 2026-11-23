@@ -4,6 +4,7 @@ import os
 import pytest
 
 from app.providers.groq import DEFAULT_GROQ_MODEL, GroqService
+from app.providers.token_quota import get_token_quota
 
 
 LIVE_TEST_FLAG = "RUN_LIVE_GROQ_TESTS"
@@ -28,7 +29,11 @@ def live_groq_service() -> GroqService:
         )
 
     model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL).strip()
-    return GroqService(api_key=api_key, model=model)
+    return GroqService(
+        api_key=api_key,
+        model=model,
+        token_quota=get_token_quota(),
+    )
 
 
 def test_live_sentence_starter_connection(

@@ -9,6 +9,10 @@ from app.models.suggestions import (
     SentenceStartersRequest,
     SentenceStartersResponse,
 )
+from app.providers.token_quota import (
+    TokenQuotaExceededError,
+    TokenQuotaUnavailableError,
+)
 from app.services.suggestions import (
     ContentGenerationService,
     ContentGenerationServiceUnavailableError,
@@ -23,6 +27,25 @@ ContentGenerationServiceDependency = Annotated[
 ]
 
 
+def _quota_exceeded(error: TokenQuotaExceededError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail={
+            "code": "global_token_quota_exceeded",
+            "quota": error.quota,
+            "retry_after_seconds": error.retry_after_seconds,
+        },
+        headers={"Retry-After": str(error.retry_after_seconds)},
+    )
+
+
+def _quota_unavailable() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={"code": "token_quota_unavailable"},
+    )
+
+
 @router.post(
     "/sentence-starters",
     response_model=SentenceStartersResponse,
@@ -34,6 +57,10 @@ async def generate_sentence_starters(
 ) -> SentenceStartersResponse:
     try:
         suggestions = await service.generate_sentence_starters(request)
+    except TokenQuotaExceededError as error:
+        raise _quota_exceeded(error) from error
+    except TokenQuotaUnavailableError as error:
+        raise _quota_unavailable() from error
     except ContentGenerationServiceUnavailableError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -56,6 +83,10 @@ async def generate_inline_completion(
 ) -> InlineCompletionResponse:
     try:
         suggestion = await service.generate_inline_completion(request)
+    except TokenQuotaExceededError as error:
+        raise _quota_exceeded(error) from error
+    except TokenQuotaUnavailableError as error:
+        raise _quota_unavailable() from error
     except ContentGenerationServiceUnavailableError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

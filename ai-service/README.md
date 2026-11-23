@@ -27,6 +27,9 @@ GROQ_MODEL=openai/gpt-oss-20b
 GROQ_MAX_INPUT_TOKENS=1500
 GROQ_MAX_COMPLETION_TOKENS=256
 GROQ_REASONING_EFFORT=low
+GROQ_TOKEN_LIMIT_PER_MINUTE=6000
+GROQ_TOKEN_LIMIT_PER_DAY=150000
+REDIS_URL=redis://localhost:6379/0
 ```
 
 `GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`.
@@ -40,6 +43,10 @@ instructions and the structured-output schema. If journal context exceeds the
 budget, only the temporary AI prompt is shortened; stored journal content is
 not changed. `previous_entries` must be ordered newest first so that the oldest
 context is removed first.
+
+Redis stores the shared rolling token quota. Requests reserve their estimated
+input plus the maximum completion allowance before Groq is called, then the
+reservation is reconciled against Groq's reported token usage.
 
 ## Run directly with Python
 
@@ -70,7 +77,7 @@ The normal test suite never contacts Groq, even when `GROQ_API_KEY` is set.
 ### Live Groq tests
 
 The live tests make two paid network requests and are disabled by default. To
-run them directly with Python 3.12 or newer:
+run them directly with Python 3.12 or newer, start Redis and then run:
 
 ```bash
 RUN_LIVE_GROQ_TESTS=1 GROQ_API_KEY=your-groq-api-key \
@@ -87,6 +94,7 @@ docker run --rm \
   -e RUN_LIVE_GROQ_TESTS=1 \
   -e GROQ_API_KEY \
   -e GROQ_MODEL \
+  -e REDIS_URL=redis://host.docker.internal:6379/0 \
   outdoor-reflections-ai-test \
   python -m pytest -m live_groq
 ```

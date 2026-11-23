@@ -12,6 +12,10 @@ from app.models.suggestions import (
     InlineCompletionResponse,
     SentenceStartersRequest,
 )
+from app.providers.token_quota import (
+    TokenQuotaExceededError,
+    TokenQuotaUnavailableError,
+)
 from app.services.suggestions import (
     ContentGenerationService,
     get_content_generation_service,
@@ -199,6 +203,89 @@ def test_inline_completion_returns_service_unavailable_without_a_provider() -> N
     }
 
 
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        (
+            "/v1/suggestions/sentence-starters",
+            {
+                "current_content": "Current reflection.",
+                "previous_entries": ["Previous reflection."],
+            },
+        ),
+        (
+            "/v1/suggestions/inline-completion",
+            {
+                "current_content": "Current reflection.",
+                "previous_entries": ["Previous reflection."],
+                "current_text_block": "I noticed",
+            },
+        ),
+    ],
+)
+def test_returns_rate_limit_response(
+    path: str,
+    payload: dict[str, object],
+) -> None:
+    class RateLimitedService(StubContentGenerationService):
+        async def generate_sentence_starters(
+            self,
+            request: SentenceStartersRequest,
+        ) -> list[str]:
+            raise TokenQuotaExceededError("tokens_per_day", 42)
+
+        async def generate_inline_completion(
+            self,
+            request: InlineCompletionRequest,
+        ) -> str:
+            raise TokenQuotaExceededError("tokens_per_day", 42)
+
+    app.dependency_overrides[get_content_generation_service] = RateLimitedService
+    try:
+        response = client.post(path, json=payload)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "42"
+    assert response.json() == {
+        "detail": {
+            "code": "global_token_quota_exceeded",
+            "quota": "tokens_per_day",
+            "retry_after_seconds": 42,
+        },
+    }
+
+
+def test_returns_service_unavailable_when_quota_store_fails() -> None:
+    class UnavailableQuotaService(StubContentGenerationService):
+        async def generate_inline_completion(
+            self,
+            request: InlineCompletionRequest,
+        ) -> str:
+            raise TokenQuotaUnavailableError
+
+    app.dependency_overrides[get_content_generation_service] = (
+        UnavailableQuotaService
+    )
+    try:
+        response = client.post(
+            "/v1/suggestions/inline-completion",
+            json={
+                "current_content": "Current reflection.",
+                "previous_entries": ["Previous reflection."],
+                "current_text_block": "I noticed",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {"code": "token_quota_unavailable"},
+    }
+
+
 def test_inline_completion_response_accepts_100_characters() -> None:
     response = InlineCompletionResponse(suggestion="a" * 100)
 
@@ -228,7 +315,10 @@ def test_groq_generation_limits_are_configurable(
     get_content_generation_service.cache_clear()
 
     try:
-        with patch("app.services.suggestions.GroqService") as groq_service:
+        with (
+            patch("app.services.suggestions.GroqService") as groq_service,
+            patch("app.services.suggestions.get_token_quota") as token_quota,
+        ):
             get_content_generation_service()
 
         groq_service.assert_called_once_with(
@@ -237,6 +327,7 @@ def test_groq_generation_limits_are_configurable(
             max_input_tokens=1200,
             max_completion_tokens=128,
             reasoning_effort="medium",
+            token_quota=token_quota.return_value,
         )
     finally:
         get_content_generation_service.cache_clear()
