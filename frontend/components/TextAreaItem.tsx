@@ -45,6 +45,10 @@ export default function TextAreaItem({
         },
     });
     const showDragHandle = selected || isDragging;
+    const autocompleteSeparator = autocomplete && line.text &&
+        !line.text.endsWith(" ") && !autocomplete.startsWith(" ")
+        ? " "
+        : "";
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (sentenceStarter && line.text.length === 0 && event.key === "Tab") {
             event.preventDefault();
@@ -94,35 +98,36 @@ export default function TextAreaItem({
             >
                 <span aria-hidden="true">⠿</span>
             </button>
-            <textarea
-                name="content"
-                className={
-                    "resize-none field-sizing-content bg-transparent font-mono outline-none outline-0 text-black " +
-                    "text-base leading-6.75 h-auto w-full overflow-hidden pl-5 " +
-                    (sentenceStarter ? "placeholder:text-black/50 " : "placeholder:text-black ") +
-                    (focus ? "" : " pointer-events-none")
-                }
-                value={line.text}
-                onKeyDown={handleKeyDown}
-                onChange={(e) => onChange(line.id, e.target.value)}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                placeholder={sentenceStarter ?? "How was your day?"}
-                disabled={!focus}
-                spellCheck={false}
-            />
-            {autocomplete && (
-                <button
-                    type="button"
-                    className="mb-1 ml-5 block rounded px-1 text-left font-mono text-xs text-rose/60 hover:bg-rose/10 hover:text-rose"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => onAcceptAutocomplete(autocomplete)}
-                    aria-label="Accept AI completion"
-                >
-                    Continue with: {autocomplete}
-                    <span className="ml-2 text-[10px] uppercase tracking-wide">Tab</span>
-                </button>
-            )}
+            <div className="relative w-full">
+                {autocomplete && (
+                    <div
+                        aria-hidden="true"
+                        data-testid="inline-completion-ghost"
+                        className="w-full whitespace-pre-wrap break-words pl-5 font-mono text-base leading-6.75 text-black"
+                    >
+                        <span className="invisible">{line.text}{autocompleteSeparator}</span>
+                        <span className="text-black/50">{autocomplete}</span>
+                    </div>
+                )}
+                <textarea
+                    name="content"
+                    className={
+                        "resize-none field-sizing-content bg-transparent font-mono outline-none outline-0 text-black " +
+                        "text-base leading-6.75 w-full overflow-hidden pl-5 " +
+                        (autocomplete ? "absolute inset-0 h-full " : "h-auto ") +
+                        (sentenceStarter ? "placeholder:text-black/50 " : "placeholder:text-black ") +
+                        (focus ? "" : " pointer-events-none")
+                    }
+                    value={line.text}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => onChange(line.id, e.target.value)}
+                    onFocus={onFocus}
+                    onBlur={onBlur}
+                    placeholder={sentenceStarter ?? "How was your day?"}
+                    disabled={!focus}
+                    spellCheck={false}
+                />
+            </div>
         </div>
     );
 }

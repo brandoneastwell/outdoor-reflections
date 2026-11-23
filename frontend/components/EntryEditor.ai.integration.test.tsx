@@ -270,7 +270,9 @@ describe("EntryEditor AI backend integration", () => {
         );
 
         expect(textBlock.value).toBe("Existing thought continued");
-        fireEvent.click(screen.getByRole("button", {name: "Accept AI completion"}));
+        expect(screen.getByTestId("inline-completion-ghost"))
+            .toHaveTextContent("Existing thought continued beneath the trees");
+        fireEvent.keyDown(textBlock, {key: "Tab"});
         expect(textBlock.value).toBe("Existing thought continued beneath the trees");
     });
 
@@ -297,7 +299,7 @@ describe("EntryEditor AI backend integration", () => {
         });
 
         expect(textBlock.value).toBe("Existing thought changed again");
-        expect(screen.queryByRole("button", {name: "Accept AI completion"})).not.toBeInTheDocument();
+        expect(screen.queryByTestId("inline-completion-ghost")).not.toBeInTheDocument();
     });
 
     it("keeps editing available when the backend rejects inline completion", async () => {
@@ -322,6 +324,6 @@ describe("EntryEditor AI backend integration", () => {
 
         expect(textBlock).toHaveValue("Existing thought continued");
         expect(textBlock).not.toBeDisabled();
-        expect(screen.queryByRole("button", {name: "Accept AI completion"})).not.toBeInTheDocument();
+        expect(screen.queryByTestId("inline-completion-ghost")).not.toBeInTheDocument();
     });
 });
