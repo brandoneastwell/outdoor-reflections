@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from app.main import app
 from app.models.suggestions import (
+    InlineCompletion,
     InlineCompletionResponse,
     SentenceStartersRequest,
 )
@@ -113,6 +114,28 @@ def test_returns_service_unavailable_without_a_provider() -> None:
     }
 
 
+def test_inline_completion_returns_service_unavailable_without_a_provider() -> None:
+    app.dependency_overrides[get_content_generation_service] = (
+        lambda: ContentGenerationService()
+    )
+    try:
+        response = client.post(
+            "/v1/suggestions/inline-completion",
+            json={
+                "current_content": "Today I returned to the river path.",
+                "previous_entries": ["A previous outdoor reflection."],
+                "current_text_block": "As I reached the old oak, I",
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Inline completion generation is unavailable",
+    }
+
+
 def test_inline_completion_response_accepts_100_characters() -> None:
     response = InlineCompletionResponse(suggestion="a" * 100)
 
@@ -122,3 +145,10 @@ def test_inline_completion_response_accepts_100_characters() -> None:
 def test_inline_completion_response_rejects_more_than_100_characters() -> None:
     with pytest.raises(ValidationError):
         InlineCompletionResponse(suggestion="a" * 101)
+
+
+def test_inline_completion_uses_the_inline_completion_type() -> None:
+    completion = InlineCompletion(text=" continued along the path.")
+
+    assert completion.type == "inline_completion"
+    assert completion.text == " continued along the path."

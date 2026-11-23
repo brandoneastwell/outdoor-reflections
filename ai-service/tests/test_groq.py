@@ -1,11 +1,23 @@
 import asyncio
 import json
+import re
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 
 from app.providers.groq import GroqService, GroqServiceError
+
+
+def extract_delimited_journal_data(content: str) -> dict[str, object]:
+    match = re.search(
+        r"BEGIN_UNTRUSTED_JOURNAL_DATA_([0-9a-f]{32})\n"
+        r"(.*)\nEND_UNTRUSTED_JOURNAL_DATA_\1$",
+        content,
+        re.DOTALL,
+    )
+    assert match is not None
+    return json.loads(match.group(2))
 
 
 def build_client(content: str) -> tuple[SimpleNamespace, AsyncMock]:
@@ -61,12 +73,47 @@ def test_generate_sentence_starters_with_structured_output() -> None:
     assert request["response_format"]["type"] == "json_schema"
     assert request["response_format"]["json_schema"]["strict"] is True
     assert request["temperature"] == 0.7
-    assert "Today I returned to the river path." in request["messages"][1][
+    journal_data = extract_delimited_journal_data(request["messages"][1]["content"])
+    assert journal_data == {
+        "current_content": "Today I returned to the river path.",
+        "previous_entries": ["The ridge walk left me feeling calmer."],
+    }
+
+
+def test_generate_inline_completion_with_structured_output() -> None:
+    client, create = build_client(
+        json.dumps({"text": " noticed how quiet the woodland had become."}),
+    )
+    service = GroqService(
+        api_key="test-api-key",
+        model="test-model",
+        client=client,
+    )
+
+    result = asyncio.run(
+        service.generate_inline_completion(
+            current_content="Today I returned to the river path.",
+            previous_entries=["The ridge walk left me feeling calmer."],
+            current_text_block="As I reached the old oak, I",
+        ),
+    )
+
+    assert result == " noticed how quiet the woodland had become."
+    request = create.await_args.kwargs
+    assert request["response_format"]["type"] == "json_schema"
+    assert request["response_format"]["json_schema"]["strict"] is True
+    assert request["response_format"]["json_schema"]["schema"]["properties"][
+        "text"
+    ]["maxLength"] == 100
+    assert "exactly one short inline continuation" in request["messages"][0][
         "content"
     ]
-    assert "The ridge walk left me feeling calmer." in request["messages"][1][
-        "content"
-    ]
+    journal_data = extract_delimited_journal_data(request["messages"][1]["content"])
+    assert journal_data == {
+        "current_content": "Today I returned to the river path.",
+        "previous_entries": ["The ridge walk left me feeling calmer."],
+        "current_text_block": "As I reached the old oak, I",
+    }
 
 
 def test_rejects_invalid_groq_response() -> None:
@@ -78,5 +125,19 @@ def test_rejects_invalid_groq_response() -> None:
             service.generate_sentence_starters(
                 current_content="",
                 previous_entries=["A previous outdoor reflection."],
+            ),
+        )
+
+
+def test_rejects_inline_completion_over_100_characters() -> None:
+    client, _ = build_client(json.dumps({"text": "a" * 101}))
+    service = GroqService(api_key="test-api-key", client=client)
+
+    with pytest.raises(GroqServiceError, match="invalid response"):
+        asyncio.run(
+            service.generate_inline_completion(
+                current_content="",
+                previous_entries=["A previous outdoor reflection."],
+                current_text_block="The path",
             ),
         )

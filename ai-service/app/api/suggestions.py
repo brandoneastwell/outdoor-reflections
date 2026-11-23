@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.models.suggestions import (
+    InlineCompletion,
     SentenceStarter,
     SentenceStartersRequest,
     SentenceStartersResponse, InlineCompletionResponse, InlineCompletionRequest
@@ -53,8 +54,13 @@ async def generate_inline_completion(
     service: ContentGenerationServiceDependency,
 ) -> InlineCompletionResponse:
     try:
-        suggestions = await service.generate_sentence_starters(request)
+        suggestions = await service.generate_inline_completion(request)
     except ContentGenerationServiceUnavailableError as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+            detail="Inline completion generation is unavailable",
+        ) from error
+
+    return InlineCompletionResponse(
+        suggestions=[InlineCompletion(text=text) for text in suggestions]
+    )

@@ -8,6 +8,10 @@ PreviousEntry = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1, max_length=10_000),
 ]
 
+class SuggestionType(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["sentence_starter", "inline_completion"]
 
 class SentenceStartersRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -19,9 +23,7 @@ class SentenceStartersRequest(BaseModel):
     ]
 
 
-class SentenceStarter(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class SentenceStarter(SuggestionType):
     type: Literal["sentence_starter"] = "sentence_starter"
     text: Annotated[str, Field(min_length=1, max_length=200)]
 
@@ -34,6 +36,9 @@ class SentenceStartersResponse(BaseModel):
         Field(min_length=3, max_length=3),
     ]
 
+class InlineCompletion(SuggestionType):
+    type: Literal["inline_completion"] = "inline_completion"
+    text: Annotated[str, Field(min_length=1, max_length=100)]
 
 class InlineCompletionRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
