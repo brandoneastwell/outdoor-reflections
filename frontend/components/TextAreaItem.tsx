@@ -102,11 +102,9 @@ export default function TextAreaItem({
                 {autocomplete && (
                     <div
                         aria-hidden="true"
-                        data-testid="inline-completion-ghost"
-                        className="w-full whitespace-pre-wrap break-words pl-5 font-mono text-base leading-6.75 text-black"
+                        className="invisible w-full whitespace-pre-wrap break-words pl-5 font-mono text-base leading-6.75"
                     >
-                        <span className="invisible">{line.text}{autocompleteSeparator}</span>
-                        <span className="text-black/50">{autocomplete}</span>
+                        {line.text}{autocompleteSeparator}{autocomplete}
                     </div>
                 )}
                 <textarea
@@ -127,6 +125,16 @@ export default function TextAreaItem({
                     disabled={!focus}
                     spellCheck={false}
                 />
+                {autocomplete && (
+                    <div
+                        aria-hidden="true"
+                        data-testid="inline-completion-ghost"
+                        className="pointer-events-none absolute inset-0 z-[1] w-full whitespace-pre-wrap break-words pl-5 font-mono text-base leading-6.75 text-black"
+                    >
+                        <span className="invisible">{line.text}{autocompleteSeparator}</span>
+                        <span className="text-black/50">{autocomplete}</span>
+                    </div>
+                )}
             </div>
         </div>
     );

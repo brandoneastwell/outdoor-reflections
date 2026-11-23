@@ -85,6 +85,8 @@ describe("TextAreaItem", () => {
 
         expect(screen.getByTestId("inline-completion-ghost"))
             .toHaveTextContent("A reflection beneath the trees");
+        expect(screen.getByTestId("inline-completion-ghost"))
+            .toHaveClass("absolute", "inset-0", "pointer-events-none");
         fireEvent.keyDown(screen.getByRole("textbox"), {key: "Tab"});
         expect(onAcceptAutocomplete).toHaveBeenCalledWith("beneath the trees");
         expect(defaultProps.onKeyDown).not.toHaveBeenCalled();
