@@ -157,6 +157,37 @@ def test_generate_inline_completion_with_structured_output(
     assert "As I reached the old oak" not in caplog.text
 
 
+def test_inline_completion_trims_context_without_mutating_the_request(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    client, create = build_client(json.dumps({"text": " continued."}))
+    service = GroqService(
+        api_key="test-api-key",
+        client=client,
+        max_input_tokens=1_000,
+    )
+    previous_entries = ["newest", "oldest " * 500]
+
+    caplog.set_level("INFO", logger="app.providers.groq")
+    result = asyncio.run(
+        service.generate_inline_completion(
+            current_content="Current reflection.",
+            previous_entries=previous_entries,
+            current_text_block="I noticed",
+        ),
+    )
+
+    assert result == " continued."
+    request = create.await_args.kwargs
+    journal_data = extract_delimited_journal_data(request["messages"][1]["content"])
+    assert journal_data["previous_entries"] == ["newest"]
+    assert previous_entries == ["newest", "oldest " * 500]
+    usage_record = next(
+        record for record in caplog.records if record.event == "groq_token_usage"
+    )
+    assert usage_record.estimated_input_tokens <= 1_000
+
+
 def test_records_missing_token_usage_without_failing_generation(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -185,20 +216,23 @@ def test_records_missing_token_usage_without_failing_generation(
 
 
 @pytest.mark.parametrize(
-    ("max_completion_tokens", "reasoning_effort"),
+    ("max_completion_tokens", "reasoning_effort", "max_input_tokens"),
     [
-        (0, "low"),
-        (-1, "low"),
-        (256, "none"),
+        (256, "low", 0),
+        (0, "low", 1_500),
+        (-1, "low", 1_500),
+        (256, "none", 1_500),
     ],
 )
 def test_rejects_invalid_generation_limits(
     max_completion_tokens: int,
     reasoning_effort: str,
+    max_input_tokens: int,
 ) -> None:
     with pytest.raises(ValueError):
         GroqService(
             api_key="test-api-key",
+            max_input_tokens=max_input_tokens,
             max_completion_tokens=max_completion_tokens,
             reasoning_effort=reasoning_effort,
         )

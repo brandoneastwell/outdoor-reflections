@@ -4,12 +4,12 @@ from functools import lru_cache
 from app.models.suggestions import SentenceStartersRequest, InlineCompletionRequest
 from app.providers.groq import (
     DEFAULT_GROQ_MODEL,
+    DEFAULT_MAX_INPUT_TOKENS,
     DEFAULT_MAX_COMPLETION_TOKENS,
     DEFAULT_REASONING_EFFORT,
     GroqService,
     GroqServiceError,
 )
-from app.providers.token_budget import DEFAULT_MAX_INPUT_TOKENS
 
 
 class ContentGenerationServiceUnavailableError(RuntimeError):

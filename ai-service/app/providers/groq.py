@@ -1,19 +1,19 @@
+import json
 import logging
+import math
+import secrets
 from typing import Any, Protocol
 
 from groq import APIError, AsyncGroq
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.providers.token_budget import (
-    DEFAULT_MAX_INPUT_TOKENS,
-    PromptBudgeter,
-)
-
-
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
+DEFAULT_MAX_INPUT_TOKENS = 1_500
 DEFAULT_MAX_COMPLETION_TOKENS = 256
 DEFAULT_REASONING_EFFORT = "low"
 SUPPORTED_REASONING_EFFORTS = {"low", "medium", "high"}
+ESTIMATED_BYTES_PER_TOKEN = 3
+TOKEN_ESTIMATION_SAFETY_FACTOR = 1.25
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPTS = {
@@ -63,6 +63,85 @@ class GroqServiceError(RuntimeError):
     """Raised when Groq cannot produce a valid sentence-starter response."""
 
 
+def _build_budgeted_messages(
+    *,
+    system_prompt: str,
+    instruction: str,
+    journal_data: dict[str, Any],
+    response_format: dict[str, Any],
+    max_input_tokens: int,
+) -> tuple[list[dict[str, str]], int]:
+    context = {
+        **journal_data,
+        "previous_entries": list(journal_data["previous_entries"]),
+    }
+
+    def render() -> tuple[list[dict[str, str]], int]:
+        boundary_id = secrets.token_hex(16)
+        serialized_data = json.dumps(context, ensure_ascii=False)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": (
+                    f"{instruction}\n"
+                    f"BEGIN_UNTRUSTED_JOURNAL_DATA_{boundary_id}\n"
+                    f"{serialized_data}\n"
+                    f"END_UNTRUSTED_JOURNAL_DATA_{boundary_id}"
+                ),
+            },
+        ]
+        payload = json.dumps(
+            {"messages": messages, "response_format": response_format},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        estimated_tokens = math.ceil(
+            len(payload.encode("utf-8"))
+            / ESTIMATED_BYTES_PER_TOKEN
+            * TOKEN_ESTIMATION_SAFETY_FACTOR,
+        )
+        return messages, estimated_tokens
+
+    messages, estimated_tokens = render()
+    while estimated_tokens > max_input_tokens:
+        trim_characters = max(
+            1,
+            math.ceil(
+                (estimated_tokens - max_input_tokens)
+                * ESTIMATED_BYTES_PER_TOKEN
+                / TOKEN_ESTIMATION_SAFETY_FACTOR,
+            ),
+        )
+        previous_entries = context["previous_entries"]
+        if len(previous_entries) > 1:
+            previous_entries.pop()
+        elif previous_entries:
+            previous_entries[0] = previous_entries[0][trim_characters:]
+            if not previous_entries[0]:
+                previous_entries.clear()
+        elif context["current_content"]:
+            context["current_content"] = context["current_content"][
+                trim_characters:
+            ]
+        elif len(context.get("current_text_block", "")) > 1:
+            characters_to_remove = min(
+                trim_characters,
+                len(context["current_text_block"]) - 1,
+            )
+            context["current_text_block"] = context["current_text_block"][
+                characters_to_remove:
+            ]
+        else:
+            raise ValueError(
+                "Required prompt instructions exceed the input token budget",
+            )
+
+        messages, estimated_tokens = render()
+
+    return messages, estimated_tokens
+
+
 class GroqSentenceStarter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -100,8 +179,9 @@ class GroqService:
         max_input_tokens: int = DEFAULT_MAX_INPUT_TOKENS,
         max_completion_tokens: int = DEFAULT_MAX_COMPLETION_TOKENS,
         reasoning_effort: str = DEFAULT_REASONING_EFFORT,
-        prompt_budgeter: PromptBudgeter | None = None,
     ) -> None:
+        if max_input_tokens <= 0:
+            raise ValueError("max_input_tokens must be greater than zero")
         if max_completion_tokens <= 0:
             raise ValueError("max_completion_tokens must be greater than zero")
         if reasoning_effort not in SUPPORTED_REASONING_EFFORTS:
@@ -110,11 +190,9 @@ class GroqService:
             )
 
         self._model = model
+        self._max_input_tokens = max_input_tokens
         self._max_completion_tokens = max_completion_tokens
         self._reasoning_effort = reasoning_effort
-        self._prompt_budgeter = prompt_budgeter or PromptBudgeter(
-            max_input_tokens=max_input_tokens,
-        )
         self._client = client or AsyncGroq(
             api_key=api_key,
             max_retries=1,
@@ -184,7 +262,7 @@ class GroqService:
                 "schema": GroqInlineCompletionResponse.model_json_schema(),
             },
         }
-        prompt = self._prompt_budgeter.build(
+        messages, estimated_input_tokens = _build_budgeted_messages(
             system_prompt=SYSTEM_PROMPTS["INLINE_COMPLETION_PROMPT"],
             instruction="Generate one inline completion from this journal data:",
             journal_data={
@@ -193,12 +271,13 @@ class GroqService:
                 "current_text_block": current_text_block,
             },
             response_format=response_format,
+            max_input_tokens=self._max_input_tokens,
         )
 
         try:
             response = await self._client.chat.completions.create(
                 model=self._model,
-                messages=prompt.messages,
+                messages=messages,
                 response_format=response_format,
                 temperature=0.7,
                 max_completion_tokens=self._max_completion_tokens,
@@ -211,7 +290,7 @@ class GroqService:
         self._record_token_usage(
             response,
             "inline_completion",
-            prompt.estimated_input_tokens,
+            estimated_input_tokens,
         )
         content = response.choices[0].message.content if response.choices else None
         if not content:
@@ -239,7 +318,7 @@ class GroqService:
                 "schema": GroqSentenceStartersResponse.model_json_schema(),
             },
         }
-        prompt = self._prompt_budgeter.build(
+        messages, estimated_input_tokens = _build_budgeted_messages(
             system_prompt=SYSTEM_PROMPTS["SENTENCE_STARTER_PROMPT"],
             instruction="Generate sentence starters from this journal data:",
             journal_data={
@@ -247,12 +326,13 @@ class GroqService:
                 "previous_entries": previous_entries,
             },
             response_format=response_format,
+            max_input_tokens=self._max_input_tokens,
         )
 
         try:
             response = await self._client.chat.completions.create(
                 model=self._model,
-                messages=prompt.messages,
+                messages=messages,
                 response_format=response_format,
                 temperature=0.7,
                 max_completion_tokens=self._max_completion_tokens,
@@ -265,7 +345,7 @@ class GroqService:
         self._record_token_usage(
             response,
             "sentence_starters",
-            prompt.estimated_input_tokens,
+            estimated_input_tokens,
         )
         content = response.choices[0].message.content if response.choices else None
         if not content:
