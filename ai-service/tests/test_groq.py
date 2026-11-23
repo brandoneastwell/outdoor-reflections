@@ -22,16 +22,26 @@ def extract_delimited_journal_data(content: str) -> dict[str, object]:
     return json.loads(match.group(2))
 
 
-def build_client(content: str) -> tuple[SimpleNamespace, AsyncMock]:
-    create = AsyncMock(
-        return_value=SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    message=SimpleNamespace(content=content),
-                ),
-            ],
-        ),
+def build_client(
+    content: str,
+    *,
+    include_usage: bool = True,
+) -> tuple[SimpleNamespace, AsyncMock]:
+    response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=content),
+            ),
+        ],
     )
+    if include_usage:
+        response.usage = SimpleNamespace(
+            prompt_tokens=120,
+            completion_tokens=30,
+            total_tokens=150,
+        )
+
+    create = AsyncMock(return_value=response)
     client = SimpleNamespace(
         chat=SimpleNamespace(
             completions=SimpleNamespace(create=create),
@@ -40,7 +50,9 @@ def build_client(content: str) -> tuple[SimpleNamespace, AsyncMock]:
     return client, create
 
 
-def test_generate_sentence_starters_with_structured_output() -> None:
+def test_generate_sentence_starters_with_structured_output(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     client, create = build_client(
         json.dumps(
             {
@@ -58,6 +70,7 @@ def test_generate_sentence_starters_with_structured_output() -> None:
         client=client,
     )
 
+    caplog.set_level("INFO", logger="app.providers.groq")
     result = asyncio.run(
         service.generate_sentence_starters(
             current_content="Today I returned to the river path.",
@@ -80,9 +93,20 @@ def test_generate_sentence_starters_with_structured_output() -> None:
         "current_content": "Today I returned to the river path.",
         "previous_entries": ["The ridge walk left me feeling calmer."],
     }
+    usage_record = next(
+        record for record in caplog.records if record.event == "groq_token_usage"
+    )
+    assert usage_record.operation == "sentence_starters"
+    assert usage_record.model == "test-model"
+    assert usage_record.prompt_tokens == 120
+    assert usage_record.completion_tokens == 30
+    assert usage_record.total_tokens == 150
+    assert "Today I returned" not in caplog.text
 
 
-def test_generate_inline_completion_with_structured_output() -> None:
+def test_generate_inline_completion_with_structured_output(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     client, create = build_client(
         json.dumps({"text": " noticed how quiet the woodland had become."}),
     )
@@ -92,6 +116,7 @@ def test_generate_inline_completion_with_structured_output() -> None:
         client=client,
     )
 
+    caplog.set_level("INFO", logger="app.providers.groq")
     result = asyncio.run(
         service.generate_inline_completion(
             current_content="Today I returned to the river path.",
@@ -116,6 +141,38 @@ def test_generate_inline_completion_with_structured_output() -> None:
         "previous_entries": ["The ridge walk left me feeling calmer."],
         "current_text_block": "As I reached the old oak, I",
     }
+    usage_record = next(
+        record for record in caplog.records if record.event == "groq_token_usage"
+    )
+    assert usage_record.operation == "inline_completion"
+    assert usage_record.total_tokens == 150
+    assert "As I reached the old oak" not in caplog.text
+
+
+def test_records_missing_token_usage_without_failing_generation(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    client, _ = build_client(
+        json.dumps({"text": " beneath the shifting leaves."}),
+        include_usage=False,
+    )
+    service = GroqService(api_key="test-api-key", client=client)
+
+    completion = asyncio.run(
+        service.generate_inline_completion(
+            current_content="",
+            previous_entries=["A previous outdoor reflection."],
+            current_text_block="I paused",
+        ),
+    )
+
+    assert completion == " beneath the shifting leaves."
+    missing_record = next(
+        record
+        for record in caplog.records
+        if record.event == "groq_token_usage_missing"
+    )
+    assert missing_record.operation == "inline_completion"
 
 
 def test_rejects_invalid_groq_response() -> None:

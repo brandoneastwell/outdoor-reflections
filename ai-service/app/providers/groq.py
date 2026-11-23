@@ -1,4 +1,5 @@
 import json
+import logging
 import secrets
 from typing import Any, Protocol
 
@@ -7,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPTS = {
     "INLINE_COMPLETION_PROMPT": """
@@ -107,6 +109,41 @@ class GroqService:
             timeout=15.0,
         )
 
+    def _record_token_usage(self, response: Any, operation: str) -> None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            logger.warning(
+                "Groq token usage missing operation=%s model=%s",
+                operation,
+                self._model,
+                extra={
+                    "event": "groq_token_usage_missing",
+                    "operation": operation,
+                    "model": self._model,
+                },
+            )
+            return
+
+        logger.info(
+            (
+                "Groq token usage operation=%s model=%s prompt_tokens=%s "
+                "completion_tokens=%s total_tokens=%s"
+            ),
+            operation,
+            self._model,
+            usage.prompt_tokens,
+            usage.completion_tokens,
+            usage.total_tokens,
+            extra={
+                "event": "groq_token_usage",
+                "operation": operation,
+                "model": self._model,
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_tokens": usage.total_tokens,
+            },
+        )
+
     async def generate_inline_completion(
         self,
         current_content: str,
@@ -149,6 +186,7 @@ class GroqService:
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error
 
+        self._record_token_usage(response, "inline_completion")
         content = response.choices[0].message.content if response.choices else None
         if not content:
             raise GroqServiceError("Groq returned an empty response")
@@ -201,6 +239,7 @@ class GroqService:
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error
 
+        self._record_token_usage(response, "sentence_starters")
         content = response.choices[0].message.content if response.choices else None
         if not content:
             raise GroqServiceError("Groq returned an empty response")
