@@ -50,9 +50,9 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [focusedTextBlockIndex, setFocusedTextBlockIndex] = useState<number | null>(null);
     const [aiState, setAiState] = useState<EntryAiState>({
         autocomplete: undefined,
-        status: "idle",
+        status: isEntryBlank(initEntry) ? "loading" : "idle",
         sentence_starters: [],
-        targetBlockIndex: null,
+        targetBlockIndex: isEntryBlank(initEntry) ? 0 : null,
         error: null,
     });
     const user = useAuth()
@@ -241,9 +241,15 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     .slice(0, 10);
 
                 setRecentContent(previousContent);
+                if (previousContent.length <= 1 || !navigator.onLine) {
+                    setAiState((currentState: EntryAiState) => ({...currentState, status: "idle"}));
+                }
             } catch (error) {
                 console.warn("Unable to load previous entries for AI context", error);
-                if (!cancelled) setRecentContent([]);
+                if (!cancelled) {
+                    setRecentContent([]);
+                    setAiState((currentState: EntryAiState) => ({...currentState, status: "idle"}));
+                }
             }
         };
 

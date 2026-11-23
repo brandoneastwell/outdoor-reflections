@@ -138,7 +138,11 @@ export default function TextArea({ focus }: TextAreaProps) {
                             sentenceStarter={
                                 index === 0 &&
                                 line.text.trim() === ""
-                                    ? aiState.sentence_starters[0] ?? currentEntrySentenceStarter
+                                    ? aiState.sentence_starters[0] ??
+                                        currentEntrySentenceStarter ??
+                                        (aiState.status === "loading" && aiState.targetBlockIndex === 0
+                                            ? ""
+                                            : undefined)
                                     : undefined
                             }
                             autocomplete={

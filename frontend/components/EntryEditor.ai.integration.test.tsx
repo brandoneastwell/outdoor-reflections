@@ -125,7 +125,11 @@ describe("EntryEditor AI backend integration", () => {
                 headers: {"Content-Type": "application/json"},
             }),
         );
-        render(<EntryEditor initEntry={makeEntry()} />);
+        const {container} = render(<EntryEditor initEntry={makeEntry()} />);
+
+        expect(container.querySelector('textarea[name="content"]'))
+            .toHaveAttribute("placeholder", "");
+
         await flushPromises();
 
         const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("I noticed...");
@@ -214,6 +218,20 @@ describe("EntryEditor AI backend integration", () => {
         fireEvent.focus(textBlock);
         expect(textBlock).toHaveValue("");
         expect(textBlock).toHaveAttribute("placeholder", "How was your day?");
+    });
+
+    it("shows the default placeholder after finding insufficient context", async () => {
+        databaseMocks.getAll.mockResolvedValue(previousEntries.slice(0, 1));
+
+        const {container} = render(<EntryEditor initEntry={makeEntry()} />);
+        expect(container.querySelector('textarea[name="content"]'))
+            .toHaveAttribute("placeholder", "");
+
+        await flushPromises();
+
+        expect(screen.getByPlaceholderText("How was your day?"))
+            .toHaveValue("");
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("sends typed content and accepts the inline response returned by NestJS", async () => {
