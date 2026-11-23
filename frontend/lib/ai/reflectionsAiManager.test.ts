@@ -1,5 +1,9 @@
 import {describe, expect, it, vi} from "vitest";
-import {ReflectionsAiError, ReflectionsAiManager} from "./reflectionsAiManager";
+import {
+    ReflectionsAiError,
+    ReflectionsAiManager,
+    ReflectionsAiRateLimitError,
+} from "./reflectionsAiManager";
 
 const suggestions = [
     {type: "sentence_starter" as const, text: "I noticed..."},
@@ -112,5 +116,48 @@ describe("ReflectionsAiManager", () => {
                 recentContent: [],
             }),
         ).rejects.toThrow("AI sentence starter service returned an invalid response");
+    });
+
+    it("rejects an invalid inline completion", async () => {
+        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+            new Response(JSON.stringify("x".repeat(101)), {status: 200}),
+        );
+        const manager = new ReflectionsAiManager({fetcher});
+
+        await expect(manager.getInlineCompletion("reflection-id", {
+            currentContent: "Current draft",
+            currentTextBlock: "Current draft",
+            recentContent: ["Earlier reflection one", "Earlier reflection two"],
+        })).rejects.toThrow("AI inline completion service returned an invalid response");
+    });
+
+    it("does not call the backend again during a quota cooldown", async () => {
+        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+            new Response(JSON.stringify({
+                statusCode: 429,
+                code: "AI_TOKEN_QUOTA_EXCEEDED",
+                retryAfterSeconds: 42,
+            }), {
+                status: 429,
+                headers: {"Retry-After": "42"},
+            }),
+        );
+        const manager = new ReflectionsAiManager({fetcher});
+        const request = {
+            currentContent: "Current draft",
+            recentContent: ["Earlier reflection one", "Earlier reflection two"],
+        };
+
+        await expect(manager.getSentenceStarters("reflection-id", request)).rejects.toEqual(
+            expect.objectContaining<Partial<ReflectionsAiRateLimitError>>({
+                name: "ReflectionsAiRateLimitError",
+                retryAfterSeconds: 42,
+            }),
+        );
+        await expect(manager.getSentenceStarters("reflection-id", request)).rejects.toBeInstanceOf(
+            ReflectionsAiRateLimitError,
+        );
+
+        expect(fetcher).toHaveBeenCalledTimes(1);
     });
 });
