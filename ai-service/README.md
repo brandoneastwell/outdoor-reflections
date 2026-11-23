@@ -24,9 +24,14 @@ starters:
 ```dotenv
 GROQ_API_KEY=your-groq-api-key
 GROQ_MODEL=openai/gpt-oss-20b
+GROQ_MAX_COMPLETION_TOKENS=256
+GROQ_REASONING_EFFORT=low
 ```
 
 `GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`.
+`GROQ_MAX_COMPLETION_TOKENS` defaults to `256`, and
+`GROQ_REASONING_EFFORT` defaults to `low`. Supported reasoning effort values
+are `low`, `medium`, and `high`.
 
 ## Run directly with Python
 

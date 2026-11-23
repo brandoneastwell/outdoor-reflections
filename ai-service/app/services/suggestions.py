@@ -2,7 +2,13 @@ import os
 from functools import lru_cache
 
 from app.models.suggestions import SentenceStartersRequest, InlineCompletionRequest
-from app.providers.groq import DEFAULT_GROQ_MODEL, GroqService, GroqServiceError
+from app.providers.groq import (
+    DEFAULT_GROQ_MODEL,
+    DEFAULT_MAX_COMPLETION_TOKENS,
+    DEFAULT_REASONING_EFFORT,
+    GroqService,
+    GroqServiceError,
+)
 
 
 class ContentGenerationServiceUnavailableError(RuntimeError):
@@ -51,6 +57,21 @@ def get_content_generation_service() -> ContentGenerationService:
         return ContentGenerationService()
 
     model = os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL)
+    max_completion_tokens = int(
+        os.getenv(
+            "GROQ_MAX_COMPLETION_TOKENS",
+            str(DEFAULT_MAX_COMPLETION_TOKENS),
+        ),
+    )
+    reasoning_effort = os.getenv(
+        "GROQ_REASONING_EFFORT",
+        DEFAULT_REASONING_EFFORT,
+    ).strip().lower()
     return ContentGenerationService(
-        groq_service=GroqService(api_key=api_key, model=model),
+        groq_service=GroqService(
+            api_key=api_key,
+            model=model,
+            max_completion_tokens=max_completion_tokens,
+            reasoning_effort=reasoning_effort,
+        ),
     )

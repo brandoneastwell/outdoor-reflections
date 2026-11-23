@@ -88,6 +88,9 @@ def test_generate_sentence_starters_with_structured_output(
     assert request["response_format"]["type"] == "json_schema"
     assert request["response_format"]["json_schema"]["strict"] is True
     assert request["temperature"] == 0.7
+    assert request["max_completion_tokens"] == 256
+    assert request["reasoning_effort"] == "low"
+    assert request["include_reasoning"] is False
     journal_data = extract_delimited_journal_data(request["messages"][1]["content"])
     assert journal_data == {
         "current_content": "Today I returned to the river path.",
@@ -129,6 +132,9 @@ def test_generate_inline_completion_with_structured_output(
     request = create.await_args.kwargs
     assert request["response_format"]["type"] == "json_schema"
     assert request["response_format"]["json_schema"]["strict"] is True
+    assert request["max_completion_tokens"] == 256
+    assert request["reasoning_effort"] == "low"
+    assert request["include_reasoning"] is False
     assert request["response_format"]["json_schema"]["schema"]["properties"][
         "text"
     ]["maxLength"] == 100
@@ -173,6 +179,26 @@ def test_records_missing_token_usage_without_failing_generation(
         if record.event == "groq_token_usage_missing"
     )
     assert missing_record.operation == "inline_completion"
+
+
+@pytest.mark.parametrize(
+    ("max_completion_tokens", "reasoning_effort"),
+    [
+        (0, "low"),
+        (-1, "low"),
+        (256, "none"),
+    ],
+)
+def test_rejects_invalid_generation_limits(
+    max_completion_tokens: int,
+    reasoning_effort: str,
+) -> None:
+    with pytest.raises(ValueError):
+        GroqService(
+            api_key="test-api-key",
+            max_completion_tokens=max_completion_tokens,
+            reasoning_effort=reasoning_effort,
+        )
 
 
 def test_rejects_invalid_groq_response() -> None:

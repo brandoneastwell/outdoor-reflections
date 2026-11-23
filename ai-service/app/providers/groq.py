@@ -8,6 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
+DEFAULT_MAX_COMPLETION_TOKENS = 256
+DEFAULT_REASONING_EFFORT = "low"
+SUPPORTED_REASONING_EFFORTS = {"low", "medium", "high"}
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPTS = {
@@ -101,8 +104,19 @@ class GroqService:
         api_key: str,
         model: str = DEFAULT_GROQ_MODEL,
         client: GroqClient | None = None,
+        max_completion_tokens: int = DEFAULT_MAX_COMPLETION_TOKENS,
+        reasoning_effort: str = DEFAULT_REASONING_EFFORT,
     ) -> None:
+        if max_completion_tokens <= 0:
+            raise ValueError("max_completion_tokens must be greater than zero")
+        if reasoning_effort not in SUPPORTED_REASONING_EFFORTS:
+            raise ValueError(
+                "reasoning_effort must be one of: low, medium, high",
+            )
+
         self._model = model
+        self._max_completion_tokens = max_completion_tokens
+        self._reasoning_effort = reasoning_effort
         self._client = client or AsyncGroq(
             api_key=api_key,
             max_retries=1,
@@ -182,6 +196,9 @@ class GroqService:
                     },
                 },
                 temperature=0.7,
+                max_completion_tokens=self._max_completion_tokens,
+                reasoning_effort=self._reasoning_effort,
+                include_reasoning=False,
             )
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error
@@ -235,6 +252,9 @@ class GroqService:
                     },
                 },
                 temperature=0.7,
+                max_completion_tokens=self._max_completion_tokens,
+                reasoning_effort=self._reasoning_effort,
+                include_reasoning=False,
             )
         except APIError as error:
             raise GroqServiceError("Groq request failed") from error

@@ -33,6 +33,8 @@ services:
     environment:
       GROQ_API_KEY: ${GROQ_API_KEY}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      GROQ_MAX_COMPLETION_TOKENS: ${GROQ_MAX_COMPLETION_TOKENS:-256}
+      GROQ_REASONING_EFFORT: ${GROQ_REASONING_EFFORT:-low}
 
     ports:
       - "8000:8000"

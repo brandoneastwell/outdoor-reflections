@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -214,3 +215,26 @@ def test_inline_completion_uses_the_inline_completion_type() -> None:
 
     assert completion.type == "inline_completion"
     assert completion.text == " continued along the path."
+
+
+def test_groq_generation_limits_are_configurable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("GROQ_API_KEY", "test-api-key")
+    monkeypatch.setenv("GROQ_MODEL", "test-model")
+    monkeypatch.setenv("GROQ_MAX_COMPLETION_TOKENS", "128")
+    monkeypatch.setenv("GROQ_REASONING_EFFORT", "MEDIUM")
+    get_content_generation_service.cache_clear()
+
+    try:
+        with patch("app.services.suggestions.GroqService") as groq_service:
+            get_content_generation_service()
+
+        groq_service.assert_called_once_with(
+            api_key="test-api-key",
+            model="test-model",
+            max_completion_tokens=128,
+            reasoning_effort="medium",
+        )
+    finally:
+        get_content_generation_service.cache_clear()
