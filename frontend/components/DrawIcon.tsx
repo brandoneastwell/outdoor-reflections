@@ -1,10 +1,13 @@
 "use client"
 import { svgPathProperties } from "svg-path-properties";
 import {getStroke} from "perfect-freehand";
-import {getFlatSvgPathFromStroke, getSvgPathFromStroke} from "@/utils/getSvgPathFromStroke";
+import {getSvgPathFromStroke} from "@/utils/getSvgPathFromStroke";
 import {lineToPoints} from "@/utils/svgPoints";
 import {Point} from "@/types/customTypes";
 import {AnimatePresence, motion} from "motion/react";
+import {useSyncExternalStore} from "react";
+
+const subscribeToClient = () => () => {};
 
 function createPointsFromSVGPath(path: string) {
     const points: Point[] = [];
@@ -27,6 +30,18 @@ function createPointsFromSVGPath(path: string) {
 }
 
 export default function DrawIcon({ svgPaths, fill, strokeWidth = 2, iconSize = 24 } : { svgPaths: string[], fill?: string, strokeWidth?: number, iconSize?: number }) {
+    const isMounted = useSyncExternalStore(
+        subscribeToClient,
+        () => true,
+        () => false,
+    );
+
+    if (!isMounted) {
+        return (
+            <svg height={iconSize} width={iconSize} viewBox="0 0 24 24" fill={fill} xmlns="http://www.w3.org/2000/svg" />
+        );
+    }
+
     const paths: string[] = [];
 
     for (const path of svgPaths) {
