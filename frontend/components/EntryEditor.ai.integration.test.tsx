@@ -127,6 +127,7 @@ describe("EntryEditor AI backend integration", () => {
         await flushPromises();
 
         const textBlock = screen.getByPlaceholderText<HTMLTextAreaElement>("How was your day?");
+        expect(screen.queryByRole("button", {name: "Today I felt..."})).not.toBeInTheDocument();
         fireEvent.focus(textBlock);
         await flushPromises();
 

@@ -164,6 +164,32 @@ describe("EntryEditor AI interactions", () => {
         );
     });
 
+    it("requests initial sentence starters only once across rerenders", async () => {
+        const entry = makeEntry();
+        const {rerender} = render(<EntryEditor initEntry={entry} />);
+        await flushEffects();
+
+        rerender(<EntryEditor initEntry={entry} />);
+        await flushEffects();
+
+        expect(aiMocks.getSentenceStarters).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not request initial starters for an existing nonblank entry", async () => {
+        render(<EntryEditor initEntry={makeEntry({title: "Saved reflection"})} />);
+        await flushEffects();
+
+        expect(aiMocks.getSentenceStarters).not.toHaveBeenCalled();
+    });
+
+    it("does not create a text block solely to request sentence starters", async () => {
+        render(<EntryEditor initEntry={makeEntry({content: []})} />);
+        await flushEffects();
+
+        expect(screen.queryByRole("textbox", {name: "entry block"})).not.toBeInTheDocument();
+        expect(aiMocks.getSentenceStarters).not.toHaveBeenCalled();
+    });
+
     it("does not request suggestions without two previous entries", async () => {
         databaseMocks.getAll.mockResolvedValue(previousEntries.slice(0, 1));
 
