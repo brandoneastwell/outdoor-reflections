@@ -1,22 +1,11 @@
 import {createContext, Dispatch} from "react";
-import {DrawPath, Entry} from "@/types/entryTypes";
-import type {EntryAiState} from "@/types/intelligenceTypes";
+import type {Entry} from "@/types/entryTypes";
 
-type StateSetter<T> = Dispatch<T | ((previousState: T) => T)>;
+export type StateSetter<T> = Dispatch<T | ((previousState: T) => T)>;
 
 type EntryContextValue = {
     entry: Entry;
     setEntry: StateSetter<Entry>;
-    drawHistory: DrawPath[];
-    drawColor: string;
-    setDrawColor: StateSetter<string>;
-    editorScale: number;
-    aiState: EntryAiState;
-    clearAiSuggestions: () => void;
-    focusedTextBlockIndex: number | null;
-    onTextBlockFocus: (index: number) => void;
-    onTextBlockBlur: (index: number) => void;
-    onTextBlockChange: (index: number, content: string[]) => void;
 };
 
 export const EntryContext = createContext<EntryContextValue>({
@@ -31,19 +20,4 @@ export const EntryContext = createContext<EntryContextValue>({
         id: ""
     },
     setEntry: () => {},
-    drawHistory: [],
-    drawColor: "#000000",
-    setDrawColor: () => {},
-    editorScale: 1,
-    aiState: {
-        status: "idle",
-        sentence_starters: [],
-        targetBlockIndex: null,
-        error: null,
-    },
-    clearAiSuggestions: () => {},
-    focusedTextBlockIndex: null,
-    onTextBlockFocus: () => {},
-    onTextBlockBlur: () => {},
-    onTextBlockChange: () => {},
 });

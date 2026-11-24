@@ -1,11 +1,10 @@
 import {useState} from "react";
-import type {Dispatch, SetStateAction} from "react";
 import type {EditMode} from "@/types/customTypes";
 import type {DrawPath, Entry} from "@/types/entryTypes";
+import type {StateSetter} from "@/utils/entryContext";
 
-export function useDrawingTools(entry: Entry, setEntry: Dispatch<SetStateAction<Entry>>) {
+export function useDrawingTools(entry: Entry, setEntry: StateSetter<Entry>) {
     const [mode, setMode] = useState<EditMode>("text");
-    const [drawColor, setDrawColor] = useState<string>('#000000')
     const [drawHistory, setDrawHistory] = useState<DrawPath[]>([]);
 
     const drawUndo = () => {
@@ -21,8 +20,8 @@ export function useDrawingTools(entry: Entry, setEntry: Dispatch<SetStateAction<
     }
 
     const toggleDrawingMode = () => {
-        setMode((previousMode) => previousMode === "drawing" ? "text" : "drawing");
+        setMode(mode === "drawing" ? "text" : "drawing");
     };
 
-    return {mode, drawColor, setDrawColor, drawHistory, drawUndo, drawRedo, toggleDrawingMode};
+    return {mode, drawUndo, drawRedo, toggleDrawingMode};
 }

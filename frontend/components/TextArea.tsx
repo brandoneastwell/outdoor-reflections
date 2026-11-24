@@ -13,10 +13,11 @@ import {isSortable} from "@dnd-kit/react/sortable";
 import TextAreaItem from "@/components/TextAreaItem";
 import {TextBox} from "@/types/customTypes";
 import {Entry} from "@/types/entryTypes";
+import type {useEntryAiSuggestions} from "@/lib/entry-editor/useEntryAiSuggestions";
 
 interface TextAreaProps {
     focus: boolean;
-    container: React.RefObject<HTMLDivElement | null>;
+    suggestions: ReturnType<typeof useEntryAiSuggestions>;
 }
 
 const createLine = (text = ""): TextBox => ({
@@ -26,17 +27,16 @@ const createLine = (text = ""): TextBox => ({
 
 const subscribeToClient = () => () => {};
 
-export default function TextArea({ focus }: TextAreaProps) {
+export default function TextArea({focus, suggestions}: TextAreaProps) {
+    const {entry, setEntry} = useContext(EntryContext);
     const {
-        entry,
-        setEntry,
         onTextBlockFocus,
         onTextBlockBlur,
         onTextBlockChange,
         focusedTextBlockIndex,
         aiState,
         clearAiSuggestions,
-    } = useContext(EntryContext)
+    } = suggestions;
     const isMounted = useSyncExternalStore(
         subscribeToClient,
         () => true,

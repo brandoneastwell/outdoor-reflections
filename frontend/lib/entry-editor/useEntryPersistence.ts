@@ -1,13 +1,13 @@
 import {useEffect, useRef, useState} from "react";
-import type {Dispatch, SetStateAction} from "react";
 import Database from "@/lib/database";
 import {useAuth} from "@/lib/context/auth";
 import type {Entry, SyncStatus} from "@/types/entryTypes";
+import type {StateSetter} from "@/utils/entryContext";
 import {isEntryBlank} from "./isEntryBlank";
 
 const db = new Database();
 
-export function useEntryPersistence(entry: Entry, setEntry: Dispatch<SetStateAction<Entry>>) {
+export function useEntryPersistence(entry: Entry, setEntry: StateSetter<Entry>) {
     const [syncPopupVisible, setSyncPopupVisible] = useState(false);
     const [syncStatus, setSyncStatus] = useState<SyncStatus | "syncing">(entry.syncStatus ? "synced" : "pending");
     const user = useAuth();

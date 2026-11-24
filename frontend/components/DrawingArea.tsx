@@ -4,8 +4,10 @@ import { getStroke } from "perfect-freehand";
 import {getSvgPathFromStroke} from "@/utils/getSvgPathFromStroke";
 import {EntryContext} from "@/utils/entryContext";
 
+const drawColor = "#000000";
+
 export default function DrawingArea({ focus }: { focus: boolean }) {
-    const { entry, setEntry, drawColor } = useContext(EntryContext);
+    const { entry, setEntry } = useContext(EntryContext);
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const drawAreaRef = useRef<SVGSVGElement | null>(null);
     const [points, setPoints] = useState<(number[])[]>([]);
