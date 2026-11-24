@@ -8,6 +8,7 @@ const databaseMocks = vi.hoisted(() => ({
     saveToLocalDB: vi.fn(),
 }));
 const fetchMock = vi.hoisted(() => vi.fn<typeof fetch>());
+const syncPendingEntries = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/ai/reflectionsAiManager", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/ai/reflectionsAiManager")>();
@@ -29,7 +30,7 @@ vi.mock("../lib/database", () => ({
 vi.mock("@/lib/context/auth", () => ({
     useAuth: () => ({
         refresh: vi.fn(),
-        syncPendingEntries: vi.fn(),
+        syncPendingEntries,
     }),
 }));
 
@@ -87,7 +88,7 @@ async function flushPromises() {
     });
 }
 
-describe("EntryEditor AI backend integration", () => {
+describe("EntryEditor integration", () => {
     beforeEach(() => {
         vi.useFakeTimers();
         vi.stubGlobal("ResizeObserver", class ResizeObserver {
@@ -103,6 +104,7 @@ describe("EntryEditor AI backend integration", () => {
         databaseMocks.getAll.mockReset().mockResolvedValue(previousEntries);
         databaseMocks.saveToLocalDB.mockReset().mockResolvedValue("current-entry");
         fetchMock.mockReset();
+        syncPendingEntries.mockReset();
         vi.stubGlobal("fetch", fetchMock);
     });
 
@@ -111,6 +113,29 @@ describe("EntryEditor AI backend integration", () => {
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
         vi.useRealTimers();
+    });
+
+    it("saves an edit to a synced entry locally before syncing it after 15 seconds", async () => {
+        const original = makeEntry({content: ["Existing thought"], syncStatus: "synced"});
+        const revisedContent = "Existing thought revised";
+        syncPendingEntries.mockResolvedValue({
+            synced_entries: [{...original, content: [revisedContent]}],
+        });
+        render(<EntryEditor initEntry={original} />);
+        await flushPromises();
+
+        fireEvent.change(screen.getByPlaceholderText("How was your day?"), {
+            target: {value: revisedContent},
+        });
+        await act(async () => vi.advanceTimersByTimeAsync(1_000));
+        expect(databaseMocks.saveToLocalDB).toHaveBeenCalledWith(
+            expect.objectContaining({id: original.id, content: [revisedContent], syncStatus: "pending"}),
+            "reflections",
+        );
+        await act(async () => vi.advanceTimersByTimeAsync(13_999));
+        expect(syncPendingEntries).not.toHaveBeenCalled();
+        await act(async () => vi.advanceTimersByTimeAsync(1));
+        expect(syncPendingEntries).toHaveBeenCalledTimes(1);
     });
 
     it("renders and accepts sentence starters returned by NestJS", async () => {

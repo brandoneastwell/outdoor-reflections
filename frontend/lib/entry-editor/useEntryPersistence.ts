@@ -41,7 +41,7 @@ export function useEntryPersistence(entry: Entry, setEntry: Dispatch<SetStateAct
         }, 1000);
 
         const syncTimeout = setTimeout(async () => {
-            if (entry.syncStatus === "synced") return;
+            if (latestEntryRef.current.syncStatus === "synced") return;
             setSyncStatus("syncing");
             let syncedEntries;
 
