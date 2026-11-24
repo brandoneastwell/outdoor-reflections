@@ -234,9 +234,9 @@ describe("EntryEditor AI backend integration", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("sends typed content and accepts the inline response returned by NestJS", async () => {
+    it("shows the JSON suggestion as ghost text after ten seconds and commits it with Tab", async () => {
         fetchMock.mockResolvedValue(
-            new Response(JSON.stringify("beneath the trees"), {
+            new Response(JSON.stringify({suggestion: "beneath the trees"}), {
                 status: 200,
                 headers: {"Content-Type": "application/json"},
             }),
@@ -248,11 +248,11 @@ describe("EntryEditor AI backend integration", () => {
         fireEvent.focus(textBlock);
         fireEvent.change(textBlock, {target: {value: "Existing thought continued"}});
 
-        await act(async () => {
-            vi.advanceTimersByTime(10_000);
-            await Promise.resolve();
-            await Promise.resolve();
-        });
+        await act(async () => vi.advanceTimersByTimeAsync(9_999));
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(screen.queryByTestId("inline-completion-ghost")).not.toBeInTheDocument();
+
+        await act(async () => vi.advanceTimersByTimeAsync(1));
 
         expect(fetchMock).toHaveBeenCalledWith(
             expect.stringMatching(/\/reflection\/current-entry\/intelligence\/inline-completion$/),
@@ -274,6 +274,7 @@ describe("EntryEditor AI backend integration", () => {
             .toHaveTextContent("Existing thought continued beneath the trees");
         fireEvent.keyDown(textBlock, {key: "Tab"});
         expect(textBlock.value).toBe("Existing thought continued beneath the trees");
+        expect(screen.queryByTestId("inline-completion-ghost")).not.toBeInTheDocument();
     });
 
     it("ignores an inline response after the user types again", async () => {
@@ -293,7 +294,7 @@ describe("EntryEditor AI backend integration", () => {
 
         fireEvent.change(textBlock, {target: {value: "Existing thought changed again"}});
         await act(async () => {
-            resolveResponse?.(new Response(JSON.stringify("stale completion"), {status: 200}));
+            resolveResponse?.(Response.json({suggestion: "stale completion"}));
             await Promise.resolve();
             await Promise.resolve();
         });

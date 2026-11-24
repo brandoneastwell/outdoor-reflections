@@ -62,11 +62,14 @@ export class ReflectionsAiManager {
         }
 
         const payload: unknown = await response.json();
-        if (typeof payload !== "string" || payload.trim().length === 0 || payload.length > 100) {
+        const suggestion = typeof payload === "object" && payload !== null && "suggestion" in payload
+            ? payload.suggestion
+            : undefined;
+        if (typeof suggestion !== "string" || suggestion.trim().length === 0 || suggestion.length > 100) {
             throw new ReflectionsAiError("AI inline completion service returned an invalid response");
         }
 
-        return payload;
+        return suggestion;
     }
 
     async getSentenceStarters(

@@ -57,7 +57,7 @@ export class ReflectionsController {
   }
 
   @Post(':id/intelligence/inline-completion')
-  getInlineCompletion(
+  async getInlineCompletion(
     @Body()
     body: {
       currentContent: string;
@@ -65,10 +65,11 @@ export class ReflectionsController {
       recentContent: string[];
     },
   ) {
-    return this.intelligenceService.generateInlineCompletion(
+    const suggestion = await this.intelligenceService.generateInlineCompletion(
       body.currentContent,
       body.recentContent,
       body.currentTextBlock,
     );
+    return { suggestion };
   }
 }

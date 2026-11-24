@@ -72,7 +72,7 @@ describe("ReflectionsAiManager", () => {
 
     it("calls the inline completion endpoint with the current text block", async () => {
         const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-            new Response(JSON.stringify(" beneath the trees"), {
+            new Response(JSON.stringify({suggestion: " beneath the trees"}), {
                 status: 200,
                 headers: {"Content-Type": "application/json"},
             }),
@@ -120,7 +120,7 @@ describe("ReflectionsAiManager", () => {
 
     it("rejects an invalid inline completion", async () => {
         const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-            new Response(JSON.stringify("x".repeat(101)), {status: 200}),
+            new Response(JSON.stringify({suggestion: "x".repeat(101)}), {status: 200}),
         );
         const manager = new ReflectionsAiManager({fetcher});
 

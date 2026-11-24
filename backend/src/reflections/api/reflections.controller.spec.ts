@@ -21,6 +21,7 @@ describe('ReflectionsController', () => {
 
   const mockIntelligenceService = {
     generateSentenceStarters: jest.fn(),
+    generateInlineCompletion: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -44,6 +45,20 @@ describe('ReflectionsController', () => {
 
     reflectionsController = app.get(ReflectionsController);
     jest.clearAllMocks();
+  });
+
+  it('returns the inline completion as a JSON object', async () => {
+    mockIntelligenceService.generateInlineCompletion.mockResolvedValue(
+      'beneath the trees',
+    );
+
+    await expect(
+      reflectionsController.getInlineCompletion({
+        currentContent: 'I walked',
+        currentTextBlock: 'I walked',
+        recentContent: ['An earlier walk'],
+      }),
+    ).resolves.toEqual({ suggestion: 'beneath the trees' });
   });
 
   describe('create', () => {
