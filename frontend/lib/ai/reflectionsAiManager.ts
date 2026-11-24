@@ -10,7 +10,6 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 
 type ReflectionsAiManagerOptions = {
     baseUrl?: string;
-    fetcher?: typeof fetch;
     timeoutMs?: number;
 };
 
@@ -30,17 +29,14 @@ export class ReflectionsAiRateLimitError extends ReflectionsAiError {
 
 export class ReflectionsAiManager {
     private readonly baseUrl: string;
-    private readonly fetcher: typeof fetch;
     private readonly timeoutMs: number;
     private cooldownUntil = 0;
 
     constructor({
         baseUrl = API_URL,
-        fetcher = fetch,
         timeoutMs = DEFAULT_TIMEOUT_MS,
     }: ReflectionsAiManagerOptions = {}) {
         this.baseUrl = baseUrl.replace(/\/$/, "");
-        this.fetcher = fetcher;
         this.timeoutMs = timeoutMs;
     }
 
@@ -106,7 +102,7 @@ export class ReflectionsAiManager {
         else signal?.addEventListener("abort", abortRequest, {once: true});
 
         try {
-            return await this.fetcher(url, {
+            return await fetch(url, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 credentials: "include",

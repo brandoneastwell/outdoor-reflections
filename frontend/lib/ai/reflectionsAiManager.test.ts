@@ -1,4 +1,4 @@
-import {describe, expect, it, vi} from "vitest";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {
     ReflectionsAiError,
     ReflectionsAiManager,
@@ -12,8 +12,19 @@ const suggestions = [
 ];
 
 describe("ReflectionsAiManager", () => {
+    const fetchMock = vi.fn<typeof fetch>();
+
+    beforeEach(() => {
+        fetchMock.mockReset();
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
     it("calls the NestJS sentence starter endpoint with the frontend contract", async () => {
-        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        fetchMock.mockResolvedValue(
             new Response(JSON.stringify(suggestions), {
                 status: 200,
                 headers: {"Content-Type": "application/json"},
@@ -21,7 +32,6 @@ describe("ReflectionsAiManager", () => {
         );
         const manager = new ReflectionsAiManager({
             baseUrl: "http://backend.test/",
-            fetcher,
         });
 
         const result = await manager.getSentenceStarters(
@@ -33,7 +43,7 @@ describe("ReflectionsAiManager", () => {
         );
 
         expect(result).toEqual(suggestions);
-        expect(fetcher).toHaveBeenCalledWith(
+        expect(fetchMock).toHaveBeenCalledWith(
             "http://backend.test/reflection/reflection%2Fid/intelligence/sentence-starters",
             expect.objectContaining({
                 method: "POST",
@@ -49,13 +59,13 @@ describe("ReflectionsAiManager", () => {
     });
 
     it("uses the backend error message for a failed response", async () => {
-        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        fetchMock.mockResolvedValue(
             new Response(JSON.stringify({message: "Suggestions are unavailable"}), {
                 status: 503,
                 headers: {"Content-Type": "application/json"},
             }),
         );
-        const manager = new ReflectionsAiManager({fetcher});
+        const manager = new ReflectionsAiManager();
 
         await expect(
             manager.getSentenceStarters("reflection-id", {
@@ -71,7 +81,7 @@ describe("ReflectionsAiManager", () => {
     });
 
     it("calls the inline completion endpoint with the current text block", async () => {
-        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        fetchMock.mockResolvedValue(
             new Response(JSON.stringify({suggestion: " beneath the trees"}), {
                 status: 200,
                 headers: {"Content-Type": "application/json"},
@@ -79,7 +89,6 @@ describe("ReflectionsAiManager", () => {
         );
         const manager = new ReflectionsAiManager({
             baseUrl: "http://backend.test",
-            fetcher,
         });
 
         const result = await manager.getInlineCompletion("reflection-id", {
@@ -89,7 +98,7 @@ describe("ReflectionsAiManager", () => {
         });
 
         expect(result).toBe(" beneath the trees");
-        expect(fetcher).toHaveBeenCalledWith(
+        expect(fetchMock).toHaveBeenCalledWith(
             "http://backend.test/reflection/reflection-id/intelligence/inline-completion",
             expect.objectContaining({
                 body: JSON.stringify({
@@ -102,13 +111,13 @@ describe("ReflectionsAiManager", () => {
     });
 
     it("rejects a response that does not match the suggestion contract", async () => {
-        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        fetchMock.mockResolvedValue(
             new Response(JSON.stringify(suggestions.slice(0, 1)), {
                 status: 200,
                 headers: {"Content-Type": "application/json"},
             }),
         );
-        const manager = new ReflectionsAiManager({fetcher});
+        const manager = new ReflectionsAiManager();
 
         await expect(
             manager.getSentenceStarters("reflection-id", {
@@ -118,11 +127,16 @@ describe("ReflectionsAiManager", () => {
         ).rejects.toThrow("AI sentence starter service returned an invalid response");
     });
 
-    it("rejects an invalid inline completion", async () => {
-        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-            new Response(JSON.stringify({suggestion: "x".repeat(101)}), {status: 200}),
+    it.each([
+        "bare completion",
+        {suggestion: null},
+        {suggestion: " "},
+        {suggestion: "x".repeat(101)},
+    ])("rejects an invalid inline completion: %j", async (payload) => {
+        fetchMock.mockResolvedValue(
+            Response.json(payload),
         );
-        const manager = new ReflectionsAiManager({fetcher});
+        const manager = new ReflectionsAiManager();
 
         await expect(manager.getInlineCompletion("reflection-id", {
             currentContent: "Current draft",
@@ -132,7 +146,7 @@ describe("ReflectionsAiManager", () => {
     });
 
     it("does not call the backend again during a quota cooldown", async () => {
-        const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        fetchMock.mockResolvedValue(
             new Response(JSON.stringify({
                 statusCode: 429,
                 code: "AI_TOKEN_QUOTA_EXCEEDED",
@@ -142,7 +156,7 @@ describe("ReflectionsAiManager", () => {
                 headers: {"Retry-After": "42"},
             }),
         );
-        const manager = new ReflectionsAiManager({fetcher});
+        const manager = new ReflectionsAiManager();
         const request = {
             currentContent: "Current draft",
             recentContent: ["Earlier reflection one", "Earlier reflection two"],
@@ -158,6 +172,6 @@ describe("ReflectionsAiManager", () => {
             ReflectionsAiRateLimitError,
         );
 
-        expect(fetcher).toHaveBeenCalledTimes(1);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 });

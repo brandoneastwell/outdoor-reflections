@@ -15,7 +15,6 @@ vi.mock("@/lib/ai/reflectionsAiManager", async (importOriginal) => {
         ...actual,
         reflectionsAiManager: new actual.ReflectionsAiManager({
             baseUrl: "http://backend.test",
-            fetcher: fetchMock,
         }),
     };
 });
