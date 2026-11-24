@@ -1,24 +1,21 @@
 "use client"
 import {useEffect, useRef, useState} from "react";
-import {EditMode} from "@/types/customTypes";
-import {DrawPath, Entry} from "@/types/entryTypes";
+import type {Entry} from "@/types/entryTypes";
 import {EntryContext} from "@/utils/entryContext";
 import DatePicker from "@/components/DatePicker";
 import DrawingArea from "@/components/DrawingArea";
 import TextArea from "@/components/TextArea";
-import EntrySyncStatus from "@/components/EntrySyncStatus";
-import BarItem from "@/components/BarItem";
-import {SVG_PATHS} from "@/constants/svgPaths";
+import EntryEditorToolbar from "@/components/EntryEditorToolbar";
 import SyncLoginPopup from "@/components/SyncLoginPopup";
 import {isEntryBlank} from "@/lib/entry-editor/isEntryBlank";
 import {useEntryAiSuggestions} from "@/lib/entry-editor/useEntryAiSuggestions";
 import {useEntryPersistence} from "@/lib/entry-editor/useEntryPersistence";
+import {useDrawingTools} from "@/lib/entry-editor/useDrawingTools";
 
 export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
-    const [mode, setMode] = useState<EditMode>("text");
-    const [drawColor, setDrawColor] = useState<string>('#000000')
-    const [drawHistory, setDrawHistory] = useState<DrawPath[]>([]);
     const [entry, setEntry] = useState<Entry>(initEntry);
+    const {mode, drawColor, setDrawColor, drawHistory, drawUndo, drawRedo, toggleDrawingMode} =
+        useDrawingTools(entry, setEntry);
     const [editorScale, setEditorScale] = useState(1);
     const {syncStatus, syncPopupVisible, dismissSyncPopup} = useEntryPersistence(entry, setEntry);
     const suggestions = useEntryAiSuggestions(entry, isEntryBlank(initEntry));
@@ -50,18 +47,6 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
 
         return () => resizeObserver.disconnect();
     }, []);
-
-    const drawUndo = () => {
-        if (entry.drawingPaths.length === 0) return;
-        setEntry((prevEntry: Entry) => ({...prevEntry, drawingPaths: prevEntry.drawingPaths.slice(0, -1)}));
-        setDrawHistory((prevHistory: DrawPath[]) => [...prevHistory, entry.drawingPaths[entry.drawingPaths.length - 1]]);
-    }
-
-    const drawRedo = () => {
-        if (drawHistory.length === 0) return;
-        setEntry((prevEntry: Entry) => ({...prevEntry, drawingPaths: [...prevEntry.drawingPaths, drawHistory[drawHistory.length - 1]]}));
-        setDrawHistory((prevHistory: DrawPath[]) => prevHistory.slice(0, -1));
-    }
 
     return (
         <div className="flex flex-col place-items-center aspect-3/4 w-full h-full origin-top">
@@ -110,14 +95,13 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
                     </div>
                 </EntryContext>
             </div>
-            <div className={"fixed w-full flex flex-row justify-center items-center my-5 bottom-0 h-20 gap-1 text-lg z-50"}>
-                <div className="flex flex-row rounded-2xl border border-white/40 bg-rose/15 p-0.5 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10">
-                    <BarItem iconSize={22} svgPaths={SVG_PATHS.reverseIcon} label={"undo drawing tool"} onClick={() => drawUndo()} />
-                    <BarItem iconSize={22} svgPaths={SVG_PATHS.forwardIcon} label={"redo drawing tool"} onClick={() => drawRedo()} />
-                    <BarItem iconSize={22} svgPaths={SVG_PATHS.drawIcon} label={"draw tool"} fill={mode === "drawing" ? "#ce796b" : "#000000"} onClick={() => setMode(mode === "drawing" ? "text" : "drawing")} />
-                    <EntrySyncStatus syncStatus={syncStatus} />
-                </div>
-            </div>
+            <EntryEditorToolbar
+                mode={mode}
+                syncStatus={syncStatus}
+                onUndo={drawUndo}
+                onRedo={drawRedo}
+                onToggleDrawingMode={toggleDrawingMode}
+            />
         </div>
     )
 }
