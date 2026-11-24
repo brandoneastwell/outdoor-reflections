@@ -1,9 +1,8 @@
 "use client"
 import {useEffect, useRef, useState} from "react";
 import {EditMode} from "@/types/customTypes";
-import {DrawPath, Entry, SyncStatus} from "@/types/entryTypes";
+import {DrawPath, Entry} from "@/types/entryTypes";
 import {EntryContext} from "@/utils/entryContext";
-import Database from "../lib/database";
 import DatePicker from "@/components/DatePicker";
 import DrawingArea from "@/components/DrawingArea";
 import TextArea from "@/components/TextArea";
@@ -11,11 +10,9 @@ import EntrySyncStatus from "@/components/EntrySyncStatus";
 import BarItem from "@/components/BarItem";
 import {SVG_PATHS} from "@/constants/svgPaths";
 import SyncLoginPopup from "@/components/SyncLoginPopup";
-import {useAuth} from "@/lib/context/auth";
 import {isEntryBlank} from "@/lib/entry-editor/isEntryBlank";
 import {useEntryAiSuggestions} from "@/lib/entry-editor/useEntryAiSuggestions";
-
-const db = new Database();
+import {useEntryPersistence} from "@/lib/entry-editor/useEntryPersistence";
 
 export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [mode, setMode] = useState<EditMode>("text");
@@ -23,78 +20,13 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     const [drawHistory, setDrawHistory] = useState<DrawPath[]>([]);
     const [entry, setEntry] = useState<Entry>(initEntry);
     const [editorScale, setEditorScale] = useState(1);
-    const [syncPopupVisible, setSyncPopupVisible] = useState(false);
-    const [syncStatus, setSyncStatus] = useState<SyncStatus | "syncing">(initEntry.syncStatus ? "synced" : "pending");
+    const {syncStatus, syncPopupVisible, dismissSyncPopup} = useEntryPersistence(entry, setEntry);
     const suggestions = useEntryAiSuggestions(entry, isEntryBlank(initEntry));
-    const user = useAuth()
 
-    const isFirstRender = useRef(true);
     const editorAreaRef = useRef<HTMLDivElement | null>(null);
-    const latestEntryRef = useRef<Entry>(entry);
-    const editableEntryKey = [
-        entry.title,
-        entry.content,
-        entry.date,
-        entry.drawingPaths,
-        entry.id
-    ].join("|");
-
     useEffect(() => {
-        latestEntryRef.current = entry;
-    }, [entry]);
-
-    useEffect(() => {
-        if (isFirstRender.current) {
-            window.scrollTo(0, 0);
-            isFirstRender.current = false;
-            return
-        }
-
-        if (isEntryBlank(latestEntryRef.current)) return;
-
-        const saveTimeout = setTimeout(() => {
-            const entryToSave: Entry = {...latestEntryRef.current, syncStatus: "pending", lastEditedAt: new Date().toISOString()};
-            db.saveToLocalDB(entryToSave, "reflections");
-            setEntry(entryToSave);
-            syncStatus !== "syncing" && setSyncStatus("pending");
-        }, 1000);
-
-        const syncTimeout = setTimeout(async () => {
-            if (entry.syncStatus === "synced") return;
-            setSyncStatus("syncing");
-            let syncedEntries;
-
-            try {
-                syncedEntries = await user.syncPendingEntries();
-            } catch (error) {
-                if (error instanceof Error && error.message === "Unauthorized") {
-                    const res = await user.refresh()
-                    if (!res.ok) {
-                        console.warn("Unauthorized to sync entries");
-                        setSyncPopupVisible(true);
-                        return;
-                    }
-
-                    try {
-                        syncedEntries = await user.syncPendingEntries();
-                    } catch (error) {
-                        console.error(error);
-                    }
-                }
-            } finally {
-                if (syncedEntries && syncedEntries.synced_entries.find((cur) => cur.id === entry.id)) {
-                    setEntry((prevEntry: Entry) => ({...prevEntry, syncStatus: "synced"}));
-                    setSyncStatus("synced");
-                }
-                else setSyncStatus("pending");
-            }
-        }, 15000);
-
-        return () => {
-            clearTimeout(saveTimeout);
-            clearTimeout(syncTimeout);
-        };
-    }, [editableEntryKey])
+        window.scrollTo(0, 0);
+    }, []);
 
     useEffect(() => {
         const updateScale = () => {
@@ -134,7 +66,7 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
     return (
         <div className="flex flex-col place-items-center aspect-3/4 w-full h-full origin-top">
             {syncPopupVisible && (
-                <SyncLoginPopup open={syncPopupVisible} onDismiss={() => setSyncPopupVisible(false)}></SyncLoginPopup>
+                <SyncLoginPopup open={syncPopupVisible} onDismiss={dismissSyncPopup}></SyncLoginPopup>
             )}
             <input
                 value={entry.title}
