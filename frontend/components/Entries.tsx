@@ -1,93 +1,102 @@
-"use client"
-import Database from "@/lib/database";
-import {Entry} from "@/types/entryTypes";
-import {useAuth} from "@/lib/context/auth";
-import {useEffect, useState} from "react";
-import {createEmptyEntry, normalizeEntry, sortEntriesByLastUpdated} from "@/utils/entryUtils";
+"use client";
+
+import Link from "next/link";
 import {useRouter} from "next/navigation";
+import {useEffect, useState} from "react";
 import DrawIcon from "@/components/DrawIcon";
 import {SVG_PATHS} from "@/constants/svgPaths";
+import {useAuth} from "@/lib/context/auth";
+import Database from "@/lib/database";
+import type {Entry} from "@/types/entryTypes";
+import {createEmptyEntry, normalizeEntry, sortEntriesByLastUpdated} from "@/utils/entryUtils";
 
 const db = new Database();
 
 export default function Entries() {
     const [entries, setEntries] = useState<Entry[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const { userId } = useAuth()
+    const [loading, setLoading] = useState(true);
+    const {userId} = useAuth();
     const router = useRouter();
 
     useEffect(() => {
+        let cancelled = false;
+
         async function loadEntries() {
             try {
-                const storedEntries = (await db.getAll('reflections')) ?? [];
-                const normalizedEntries = storedEntries.map(normalizeEntry);
-
-                const filteredEntries = !userId
-                    ? normalizedEntries.filter((entry) => entry.userId === undefined)
-                    : normalizedEntries.filter((entry) => entry.userId === userId);
-
-                sortEntriesByLastUpdated(filteredEntries)
-                setEntries(filteredEntries);
+                const storedEntries = (await db.getAll("reflections")) ?? [];
+                const ownedEntries = storedEntries.filter((entry) => entry.userId === (userId ?? undefined));
+                if (!cancelled) setEntries(sortEntriesByLastUpdated(ownedEntries.map(normalizeEntry)));
             } catch (error) {
                 console.error("Failed loading IndexedDB entries:", error);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         }
 
-        loadEntries()
+        void loadEntries();
+        return () => { cancelled = true; };
     }, [userId]);
 
-    function handleEntryClick(entryId: string) {
-        router.push(`/entry/${entryId}`);
-    }
-
-    async function createFirstEntry() {
-        const entry = await createEmptyEntry(userId)
+    async function createEntry() {
+        const entry = await createEmptyEntry(userId);
         router.push(`/entry/${entry.id}`);
     }
 
     return (
-        <div>
-            { !loading && entries.length === 0 && (
-                <div className="mx-auto mt-4 flex min-h-[45vh] w-full max-w-lg flex-col items-center justify-center rounded-2xl border border-white/60 bg-white/70 px-6 py-10 text-center font-mono text-blue-slate shadow-[0_10px_35px_rgba(73,88,103,0.12)]">
-                    <div className="mb-5 flex size-20 items-center justify-center">
-                        <DrawIcon svgPaths={SVG_PATHS.flowerIcon} strokeWidth={1.5} iconSize={54} fill={"#ce796b"} />
-                    </div>
-                    <h2 className="font-flower text-4xl font-semibold text-rose">Create your first entry</h2>
-                    <p className="mt-3 max-w-sm text-sm leading-6 text-blue-slate/80">
-                        A blank reflection is ready when you are.
-                    </p>
-                    <button
-                        type="button"
-                        onClick={createFirstEntry}
-                        className="mt-6 rounded-xl bg-rose px-5 py-3 text-sm text-white shadow-sm transition-colors cursor-pointer hover:bg-blue-slate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/40"
-                    >
-                        Create entry
-                    </button>
+        <main className="mx-auto w-full max-w-6xl px-5 pt-2 pb-12 text-[#362528] sm:px-8">
+            <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#ead9d3] pb-4">
+                <h1 className="font-flower text-4xl leading-none font-semibold sm:text-5xl">Your reflections</h1>
+                <button
+                    type="button"
+                    onClick={createEntry}
+                    className="cursor-pointer rounded-full bg-[#a23743] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#7f2632] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a23743]"
+                >
+                    <span aria-hidden="true">+ </span>New reflection
+                </button>
+            </header>
+
+            {loading && <p role="status" className="text-sm text-[#654d50]">Loading reflections…</p>}
+            {!loading && entries.length === 0 && (
+                <div className="mx-auto flex min-h-[36vh] max-w-lg flex-col items-center justify-center rounded-2xl border border-[#ead9d3] bg-[#faf5ee] px-6 py-8 text-center">
+                    <span aria-hidden="true">
+                        <DrawIcon svgPaths={SVG_PATHS.flowerIcon} strokeWidth={1.5} iconSize={54} fill="#9b3c48" />
+                    </span>
+                    <h2 className="mt-3 font-flower text-3xl font-semibold text-[#9b3c48]">Your first reflection</h2>
+                    <p className="mt-2 max-w-xs text-sm text-[#654d50]">Write a few lines or sketch something you noticed outside.</p>
                 </div>
             )}
-            { !loading && entries.length > 0 &&
-                <div className={"grid grid-cols-2 gap-2 gap-y-8 font-mono sm:grid-cols-3 lg:grid-cols-4 lg:gap-4 lg:px-10"}>
-                    { entries.map(entry => (
-                    <div key={entry.id} onClick={() => handleEntryClick(entry.id)} className="flex flex-col gap-1 p-3 rounded-xl bg-white/90 aspect-square hover:cursor-pointer">
-                        <div className="flex flex-row justify-between w-full h-6 px-1 overflow-hidden">
-                            <p>{entry.title ? entry.title : 'untitled reflection'}</p>
-                        </div>
-                        <div className="bg-rose/10 rounded-xl h-full p-2 blur-[1px] overflow-hidden">
-                            { entry.content.map((paragraph, index) =>
-                                <p key={index} className="text-xs">{paragraph}</p>
-                            )}
-                            <svg viewBox="0 0 320 920">
-                                {entry.drawingPaths.map((drawPath, index) => (
-                                    <path key={index} d={drawPath.path} fill={drawPath.color} />
-                                ))}
-                            </svg>
-                        </div>
-                    </div>
-                    ))}
-                </div>
-            }
-        </div>
-    )
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {entries.map((entry) => (
+                    <article key={entry.id} className="relative min-w-0 rounded-2xl border border-[#ead9d3] bg-[#fffaf2] shadow-sm transition-shadow hover:shadow-md">
+                        <Link
+                            href={`/entry/${entry.id}`}
+                            className="block rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a23743]"
+                        >
+                            <p className="text-sm font-semibold text-[#9b3c48]">
+                                {new Date(entry.date).toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}
+                            </p>
+                            <h2 className="mt-1 truncate font-flower text-2xl font-semibold leading-tight">
+                                {entry.title.trim() || "Untitled reflection"}
+                            </h2>
+                            <div aria-hidden="true" className="relative mt-3 h-36 overflow-hidden rounded-xl bg-[#f4e2de] px-3 py-2">
+                                <div className="relative h-full blur-[1px]">
+                                    {entry.content.map((paragraph, index) => (
+                                        <p key={index} className="text-xs leading-5 break-words whitespace-pre-wrap">{paragraph}</p>
+                                    ))}
+                                    {entry.drawingPaths.length > 0 && (
+                                        <svg className="absolute inset-0 w-full" viewBox="0 0 320 920">
+                                            {entry.drawingPaths.map((drawPath, index) => (
+                                                <path key={index} d={drawPath.path} fill={drawPath.color} />
+                                            ))}
+                                        </svg>
+                                    )}
+                                </div>
+                            </div>
+                        </Link>
+                    </article>
+                ))}
+            </div>
+        </main>
+    );
 }
