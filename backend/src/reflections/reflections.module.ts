@@ -6,9 +6,10 @@ import { ReflectionsRepository } from './entries/reflections.repository';
 import { SyncService } from './sync/sync.service';
 import { IntelligenceService } from './intelligence/intelligence.service';
 import { ReflectionsAiClient } from './intelligence/reflections-ai.client';
+import { AccountSettingsModule } from '../account-settings/account-settings.module';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, AccountSettingsModule],
   controllers: [ReflectionsController],
   providers: [
     ReflectionsService,

@@ -18,8 +18,17 @@ model UserAccount {
   reflections Reflection[]
   refreshTokens RefreshToken[]
   accounts    AuthProvider[]
+  settings    AccountSettings?
 
   @@map("user_account")
+}
+
+model AccountSettings {
+  userId         Int         @id
+  cloudAiEnabled Boolean     @default(false)
+  user           UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account_settings")
 }
 
 model AuthProvider {
