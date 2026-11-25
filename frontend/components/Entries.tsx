@@ -147,7 +147,7 @@ export default function Entries() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleEntries.map((entry) => (
-                    <article key={entry.id} className="relative min-w-0 rounded-2xl border border-[#ead9d3]/30 bg-[#fffaf2] shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-[#9b3c48]/30 hover:shadow-[0_0_16px_#9b3c4817] focus-within:border-[#9b3c48]/55 motion-reduce:transition-none">
+                    <article key={entry.id} className="relative min-w-0 rounded-2xl border border-[#ead9d3]/30 bg-[#FFFFFF90] shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-[#9b3c48]/30 hover:shadow-[0_0_16px_#9b3c4817] focus-within:border-[#9b3c48]/55 motion-reduce:transition-none">
                         <Link
                             href={`/entry/${entry.id}`}
                             className="block rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a23743]"

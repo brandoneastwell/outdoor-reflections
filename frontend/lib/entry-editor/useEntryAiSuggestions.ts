@@ -14,7 +14,7 @@ const logAiEligibility = (
     checks: Record<string, boolean>,
 ) => {
     const eligible = Object.values(checks).every(Boolean);
-    console.debug(`[AI eligibility] ${feature}:${stage}`, {...checks, eligible});
+    console.log(`[AI eligibility] ${feature}:${stage}`, {...checks, eligible});
     return eligible;
 };
 
@@ -187,7 +187,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
 
                 const previousContent = storedEntries
                     .filter((storedEntry) => storedEntry.id !== entry.id)
-                    .filter((storedEntry) => storedEntry.content.length > 0)
+                    .filter((storedEntry) => storedEntry.content.join("\n").length > 20)
                     .sort((first, second) => (
                         new Date(second.lastEditedAt).getTime() - new Date(first.lastEditedAt).getTime()
                     ))

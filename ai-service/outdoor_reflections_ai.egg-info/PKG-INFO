@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: outdoor-reflections-ai
+Version: 0.1.0
+Summary: AI microservice for Outdoor Reflections
+Requires-Python: >=3.12
+Requires-Dist: fastapi==0.162.4
+Requires-Dist: groq==1.7.0
+Requires-Dist: redis==8.2.0
+Requires-Dist: uvicorn[standard]==0.52.4
+Provides-Extra: dev
+Requires-Dist: httpx2==2.15.1; extra == "dev"
+Requires-Dist: pytest==9.2.0; extra == "dev"

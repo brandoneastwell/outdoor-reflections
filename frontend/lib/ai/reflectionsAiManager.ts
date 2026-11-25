@@ -75,6 +75,7 @@ export class ReflectionsAiManager {
     ): Promise<JournalSuggestion[]> {
         this.assertAvailable();
 
+        console.log("Requesting sentence starters for reflection", reflectionId, request)
         const response = await this.request(
             `${this.baseUrl}/reflection/${encodeURIComponent(reflectionId)}/intelligence/sentence-starters`,
             request,
