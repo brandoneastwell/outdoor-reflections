@@ -6,11 +6,15 @@ import {useRouter} from "next/navigation";
 import {readJsonError} from "@/lib/api/readResponse";
 import {User} from "@/types/userTypes";
 import type {Providers} from "@/types/authTypes";
-import {Entry, SyncResponse} from "@/types/entryTypes";
+import {SyncResponse} from "@/types/entryTypes";
 import Database from "@/lib/database";
+import {lockJournal} from "@/lib/vault/session";
+
+const lastAccountKey = "outdoor-reflections.last-account";
 
 type AuthContextType = {
     userId: number | null;
+    accountReady: boolean;
     setUserId: (userId: number | null) => void;
     logout: () => void;
     login: (credentials: User) => Promise<{ message: string, id: number }>;
@@ -23,17 +27,26 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const [userId, setUserId] = useState<number | null>(null);
+    const [userId, setAccountId] = useState<number | null>(null);
+    const [accountReady, setAccountReady] = useState(false);
+
+    function setUserId(id: number | null) {
+        if (id === null) localStorage.removeItem(lastAccountKey);
+        else localStorage.setItem(lastAccountKey, String(id));
+        setAccountId(id);
+    }
     const router = useRouter();
 
     useEffect(() => {
         async function loadUser() {
             try {
+                if (!navigator.onLine) throw new Error("Offline");
                 let res = await me()
 
                 if (res.status === 401) {
                     const refreshRes = await refresh();
                     if (!refreshRes.ok) {
+                        if (refreshRes.status >= 500) throw new Error("Account service unavailable");
                         setUserId(null);
                         return;
                     }
@@ -43,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
 
                 if (!res.ok) {
+                    if (res.status >= 500) throw new Error("Account service unavailable");
                     setUserId(null);
                     return;
                 }
@@ -50,7 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const user: { id: number, email: string } = await res.json();
                 setUserId(user.id);
             } catch {
-                setUserId(null);
+                const cachedId = Number(localStorage.getItem(lastAccountKey));
+                if (Number.isSafeInteger(cachedId) && cachedId > 0) setAccountId(cachedId);
+            } finally {
+                setAccountReady(true);
             }
         }
 
@@ -93,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             credentials: "include",
         });
 
+        lockJournal();
         setUserId(null);
         router.push("/auth");
     }
@@ -120,12 +138,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!authenticatedUserId) throw new Error("Logged out user cannot sync entries");
 
         const db = new Database();
-        const entries = await db.getAll('reflections')
-        if (!entries) return;
-
-        const entriesToSync = entries.filter(entry => entry.syncStatus === "pending" && entry.userId === authenticatedUserId)
-        if (entriesToSync.length === 0) return;
-        console.log(entriesToSync)
+        const pending = await db.getPendingRecords(authenticatedUserId);
+        if (!pending.length) return;
+        const entriesToSync = pending.map(({id, revision, lastEditedAt, deletedAt, payload}) =>
+            ({id, revision, lastEditedAt, deletedAt, payload})
+        );
 
         const res = await fetch(`${API_URL}/reflection/sync`, {
             credentials: "include",
@@ -144,15 +161,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const results: SyncResponse = await res.json()
-        const synced = results.synced_entries.map(entry => { return {...entry, syncStatus: "synced"} })
-        await Promise.all(synced.map(entry => db.saveToLocalDB(entry as Entry, "reflections")))
-
-        console.log(results)
-        return results
+        const synced_entries = await db.applySyncAcknowledgements(authenticatedUserId, results.synced_entries);
+        return {...results, synced_entries};
     }
 
     return (
-        <AuthContext.Provider value={{ userId, setUserId, logout, login, refresh, loginWithProvider, createAccount, syncPendingEntries }}>
+        <AuthContext.Provider value={{ userId, accountReady, setUserId, logout, login, refresh, loginWithProvider, createAccount, syncPendingEntries }}>
             {children}
         </AuthContext.Provider>
     );

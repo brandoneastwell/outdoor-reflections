@@ -154,7 +154,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
                 aiRequestTypeRef.current = null;
             }
         }
-    }, [entry.id]);
+    }, [entry.id, entry.userId]);
 
     useEffect(() => {
         const updateOnlineStatus = () => setIsOnline(navigator.onLine);
@@ -182,7 +182,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
 
         const loadRecentContent = async () => {
             try {
-                const storedEntries = (await db.getAll("reflections")) ?? [];
+                const storedEntries = (await db.getAll("reflections", entry.userId)) ?? [];
                 if (cancelled) return;
 
                 const previousContent = storedEntries
@@ -215,7 +215,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
         return () => {
             cancelled = true;
         };
-    }, [entry.id]);
+    }, [entry.id, entry.userId]);
 
     useEffect(() => {
         const firstBlockExists = entry.content.length > 0;

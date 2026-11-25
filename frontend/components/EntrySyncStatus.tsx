@@ -8,6 +8,7 @@ import { motion } from "motion/react"
 export default function EntrySyncStatus({ syncStatus } : { syncStatus: SyncStatus | "syncing" }) {
     return (
         <div className="absolute ml-1.5 left-full place-self-center flex flex-row font-mono text-sm rounded-2xl p-0.5">
+            {syncStatus === "failed" && <span role="alert" className="text-red-800">Save failed</span>}
             { syncStatus === "synced" && (
                 <DrawIcon fill={"green"} strokeWidth={2} iconSize={16} svgPaths={SVG_PATHS.syncedIcon} />
             )}

@@ -6,12 +6,13 @@ import { queryClient } from "@/lib/queryClient";
 import type { ReactNode } from "react";
 import {AuthProvider} from "@/lib/context/authContext";
 import SavePopup from "@/components/SavePopup";
+import JournalGate from "@/components/JournalGate";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
       <AuthProvider>
           <QueryClientProvider client={queryClient}>
-              {children}
+              <JournalGate>{children}</JournalGate>
               <SavePopup />
               <ReactQueryDevtools initialIsOpen={false} />
           </QueryClientProvider>

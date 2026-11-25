@@ -11,6 +11,7 @@ export default function SyncManager() {
 
     useEffect(() => {
         if (!userId) return;
+        const accountId = userId;
         let cancelled = false;
 
         async function syncEntries() {
@@ -31,10 +32,8 @@ export default function SyncManager() {
         async function retryQueuedDeletions() {
             if (!navigator.onLine) return;
             try {
-                const entries = await db.getAll("reflections");
-                if (!cancelled && entries?.some((entry) =>
-                    entry.deletedAt && entry.syncStatus === "pending" && entry.userId === userId
-                )) {
+                const entries = await db.getPendingRecords(accountId);
+                if (!cancelled && entries.some((entry) => entry.deletedAt)) {
                     await syncEntries();
                 }
             } catch {

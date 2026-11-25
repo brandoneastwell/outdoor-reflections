@@ -3,6 +3,7 @@
 import {useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
 import Database from "@/lib/database";
+import {useJournalUnlocked} from "@/lib/vault/session";
 import {useAuth} from "@/lib/context/auth";
 import {normalizeEntry} from "@/utils/entryUtils";
 import {Entry} from "@/types/entryTypes";
@@ -15,12 +16,16 @@ export default function SavePopup() {
     const [localEntries, setLocalEntries] = useState<Entry[]>([]);
     const [dismissed, setDismissed] = useState(false);
     const [saving, setSaving] = useState(false);
-    const { userId } = useAuth();
+    const { userId, syncPendingEntries } = useAuth();
+    const unlocked = useJournalUnlocked();
     const router = useRouter();
 
     useEffect(() => {
         async function loadLocalEntries() {
-            if (!userId || dismissed) return;
+            if (!userId || !unlocked || dismissed) {
+                setLocalEntries([]);
+                return;
+            }
 
             const storedEntries = (await db.getAll("reflections")) ?? [];
             const entriesOnDevice = storedEntries
@@ -30,11 +35,11 @@ export default function SavePopup() {
             setLocalEntries(entriesOnDevice);
         }
 
-        loadLocalEntries();
-    }, [dismissed, userId]);
+        void loadLocalEntries().catch(() => setLocalEntries([]));
+    }, [dismissed, unlocked, userId]);
 
     async function saveEntriesToAccount() {
-        if (!userId) return;
+        if (!userId || !unlocked) return;
         setSaving(true);
 
         try {
@@ -53,12 +58,13 @@ export default function SavePopup() {
 
             setLocalEntries([]);
             router.refresh();
+            if (navigator.onLine) void syncPendingEntries().catch(() => {});
         } finally {
             setSaving(false);
         }
     }
 
-    if (!userId || dismissed || localEntries.length === 0) return null;
+    if (!userId || !unlocked || dismissed || localEntries.length === 0) return null;
     const entryLabel = localEntries.length === 1 ? "entry" : "entries";
 
     return (

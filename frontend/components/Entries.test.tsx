@@ -6,6 +6,7 @@ import SyncManager from "./SyncManager";
 
 const mocks = vi.hoisted(() => ({
     getAll: vi.fn(),
+    getPendingRecords: vi.fn(),
     saveToLocalDB: vi.fn(),
     syncPendingEntries: vi.fn(),
     refresh: vi.fn(),
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/database", () => ({
     default: class Database {
         getAll = mocks.getAll;
+        getPendingRecords = mocks.getPendingRecords;
         saveToLocalDB = mocks.saveToLocalDB;
     },
 }));
@@ -52,6 +54,7 @@ describe("reflection deletion", () => {
         vi.resetAllMocks();
         mocks.userId = 42;
         mocks.getAll.mockResolvedValue([entry]);
+        mocks.getPendingRecords.mockResolvedValue([]);
         mocks.saveToLocalDB.mockResolvedValue(entry.id);
         vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
     });
@@ -121,7 +124,8 @@ describe("reflection deletion", () => {
     });
 
     it("retries an owned deletion queued during a previous session", async () => {
-        mocks.getAll.mockResolvedValue([{...entry, deletedAt: entry.date, syncStatus: "pending"}]);
+        mocks.getAll.mockResolvedValue([]);
+        mocks.getPendingRecords.mockResolvedValue([{...entry, deletedAt: entry.date, syncStatus: "pending"}]);
         render(<><SyncManager /><Entries /></>);
 
         await waitFor(() => expect(mocks.syncPendingEntries).toHaveBeenCalledOnce());

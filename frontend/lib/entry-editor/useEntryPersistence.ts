@@ -9,17 +9,17 @@ const db = new Database();
 
 export function useEntryPersistence(entry: Entry, setEntry: StateSetter<Entry>) {
     const [syncPopupVisible, setSyncPopupVisible] = useState(false);
-    const [syncStatus, setSyncStatus] = useState<SyncStatus | "syncing">(entry.syncStatus ? "synced" : "pending");
+    const [syncStatus, setSyncStatus] = useState<SyncStatus | "syncing">(entry.syncStatus);
     const user = useAuth();
     const isFirstRender = useRef(true);
     const latestEntryRef = useRef<Entry>(entry);
-    const editableEntryKey = [
+    const editableEntryKey = JSON.stringify([
         entry.title,
         entry.content,
         entry.date,
         entry.drawingPaths,
         entry.id
-    ].join("|");
+    ]);
 
     useEffect(() => {
         latestEntryRef.current = entry;
@@ -33,11 +33,14 @@ export function useEntryPersistence(entry: Entry, setEntry: StateSetter<Entry>) 
 
         if (isEntryBlank(latestEntryRef.current)) return;
 
-        const saveTimeout = setTimeout(() => {
+        const saveTimeout = setTimeout(async () => {
             const entryToSave: Entry = {...latestEntryRef.current, syncStatus: "pending", lastEditedAt: new Date().toISOString()};
-            db.saveToLocalDB(entryToSave, "reflections");
-            setEntry(entryToSave);
-            syncStatus !== "syncing" && setSyncStatus("pending");
+            if (await db.saveToLocalDB(entryToSave, "reflections") === undefined) {
+                setSyncStatus("failed");
+                return;
+            }
+            setEntry((previous: Entry) => ({...previous, syncStatus: "pending", lastEditedAt: entryToSave.lastEditedAt}));
+            setSyncStatus("pending");
         }, 1000);
 
         const syncTimeout = setTimeout(async () => {
@@ -63,7 +66,8 @@ export function useEntryPersistence(entry: Entry, setEntry: StateSetter<Entry>) 
                     }
                 }
             } finally {
-                if (syncedEntries && syncedEntries.synced_entries.find((cur) => cur.id === entry.id)) {
+                if (syncedEntries?.synced_entries.some((cur) => cur.id === entry.id &&
+                    !cur.deletedAt && (!cur.lastEditedAt || cur.lastEditedAt === latestEntryRef.current.lastEditedAt))) {
                     setEntry((prevEntry: Entry) => ({...prevEntry, syncStatus: "synced"}));
                     setSyncStatus("synced");
                 }

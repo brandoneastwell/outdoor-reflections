@@ -18,8 +18,20 @@ export type Entry = {
     deletedAt?: string | null;
 }
 
+export type EncryptedEntry = {
+    id: string;
+    userId?: number;
+    syncStatus: SyncStatus;
+    revision: string;
+    lastEditedAt: string;
+    deletedAt?: string | null;
+    payload: {version: 1; iv: string; ciphertext: string} | null;
+};
+
+export type SyncAcknowledgement = Pick<EncryptedEntry, "id" | "revision" | "lastEditedAt" | "deletedAt">;
+
 export type SyncResponse = {
-    synced_entries: Entry[];
+    synced_entries: SyncAcknowledgement[];
     timestamp: string;
     service_name: string;
     status: 'SUCCESS' | 'PARTIAL' | 'FAILED';

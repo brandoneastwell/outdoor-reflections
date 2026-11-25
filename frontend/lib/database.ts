@@ -1,148 +1,154 @@
-import {Entry} from "@/types/entryTypes";
+import type {EncryptedEntry, Entry, SyncAcknowledgement} from "@/types/entryTypes";
+import {decryptJson, encryptJson} from "@/lib/vault/crypto";
+import {requireJournalKey} from "@/lib/vault/session";
+import {z} from "zod";
 
-type DBNames = 'reflections'
-type DBTypes = Entry
+type DBName = "reflections";
+const entryContent = z.object({
+    title: z.string(),
+    content: z.array(z.string()),
+    date: z.string(),
+    createdAt: z.string(),
+    drawingPaths: z.array(z.object({path: z.string(), color: z.string()})),
+});
+
+function entryContext({id, userId, revision, lastEditedAt}: EncryptedEntry) {
+    return JSON.stringify(["outdoor/entry/v1", id, userId ?? null, revision, lastEditedAt]);
+}
+
+async function decryptEntry(record: EncryptedEntry, key: CryptoKey): Promise<Entry> {
+    if (!record.payload || record.payload.version !== 1) throw new Error("Invalid encrypted reflection");
+    const data = entryContent.parse(await decryptJson(key, record.payload, entryContext(record)));
+    const {id, userId, syncStatus, lastEditedAt} = record;
+    return {...data, id, userId, syncStatus, lastEditedAt};
+}
 
 export default class Database {
-    openDB(name: DBNames): Promise<IDBDatabase> {
+    private openDB(name: DBName): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(`${name}-db`, 1);
-            let settled = false;
-
-            request.onupgradeneeded = () => {
-                const database = request.result;
-                if (!database.objectStoreNames.contains(name)) {
-                    database.createObjectStore(name, {
-                        keyPath: "id",
-                    });
-                }
-            };
-
-            request.onerror = () => {
-                settled = true;
-                reject(request.error ?? new Error(`Failed to open ${name} database`));
-            };
-
-            request.onsuccess = () => {
-                const database = request.result;
-
-                // Allow DevTools, another tab, or a future migration to delete or
-                // upgrade the database instead of leaving that request blocked.
-                database.onversionchange = () => database.close();
-
-                if (settled) {
-                    database.close();
-                    return;
-                }
-
-                settled = true;
-                resolve(database);
-            };
-
+            const request = indexedDB.open(`${name}-encrypted-db`, 1);
+            let blocked = false;
+            request.onupgradeneeded = () => request.result.createObjectStore(name, {keyPath: "id"});
+            request.onerror = () => reject(request.error);
             request.onblocked = () => {
-                if (settled) return;
-                settled = true;
-                reject(new Error(
-                    `Opening ${name} database was blocked. Close other tabs using this app and try again.`
-                ));
+                blocked = true;
+                reject(new Error("Journal storage is blocked by another tab."));
             };
-        })
-    }
-
-    async getAll(name: DBNames): Promise<DBTypes[] | undefined> {
-        const db = await this.openDB(name);
-
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(name, "readonly");
-            const store = transaction.objectStore(name);
-            const request = store.getAll();
-            let entries: DBTypes[] = [];
-
             request.onsuccess = () => {
-                entries = request.result;
-            };
-            transaction.oncomplete = () => {
-                db.close();
-                resolve(entries);
-            };
-            transaction.onerror = () => {
-                db.close();
-                reject(transaction.error ?? request.error);
-            };
-            transaction.onabort = () => {
-                db.close();
-                reject(transaction.error ?? new Error(`Reading ${name} database was aborted`));
+                const database = request.result;
+                database.onversionchange = () => database.close();
+                if (blocked) database.close();
+                else resolve(database);
             };
         });
     }
 
-    async get(id: string, name: DBNames): Promise<DBTypes | undefined> {
-        if (!id) throw new Error(`[${name}DB] No key provided`);
-
+    private async transaction<T>(
+        name: DBName,
+        mode: IDBTransactionMode,
+        run: (store: IDBObjectStore, result: (value: T) => void) => void,
+    ): Promise<T> {
         const db = await this.openDB(name);
-
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(name, "readonly");
-            const store = transaction.objectStore(name);
-            const request = store.get(id);
-            let entry: DBTypes | undefined;
-
-            request.onsuccess = () => {
-                const result: Entry | undefined = request.result;
-                entry = result?.deletedAt ? undefined : result;
-            };
-            transaction.oncomplete = () => {
-                db.close();
-                resolve(entry);
-            };
-            transaction.onerror = () => {
-                db.close();
-                reject(transaction.error ?? request.error);
-            };
-            transaction.onabort = () => {
-                db.close();
-                reject(transaction.error ?? new Error(`Reading ${name} database was aborted`));
-            };
-        });
-    }
-
-    async saveToLocalDB(obj: DBTypes, name: DBNames): Promise<IDBValidKey | undefined> {
         try {
-            const db = await this.openDB(name);
-            return await new Promise((resolve, reject) => {
-                const transaction = db.transaction(name, "readwrite");
-                const store = transaction.objectStore(name);
-                const request = store.get(obj.id);
-                let savedKey: IDBValidKey | undefined;
+            return await new Promise<T>((resolve, reject) => {
+                const transaction = db.transaction(name, mode);
+                let result: T;
+                transaction.oncomplete = () => resolve(result);
+                transaction.onabort = () => reject(transaction.error ?? new Error("Journal storage transaction aborted."));
+                run(transaction.objectStore(name), (value) => { result = value; });
+            });
+        } finally {
+            db.close();
+        }
+    }
 
-                request.onsuccess = () => {
-                    const existing: Entry | undefined = request.result;
-                    // A stale editor or sync response must not restore a deleted reflection.
-                    if (existing?.deletedAt && (!obj.deletedAt || existing.syncStatus === "synced")) {
-                        savedKey = existing.id;
+    private readAll(name: DBName) {
+        return this.transaction<EncryptedEntry[]>(name, "readonly", (store, result) => {
+            const request = store.getAll();
+            request.onsuccess = () => result(request.result);
+        });
+    }
+
+    async getAll(name: DBName, userId?: number): Promise<Entry[]> {
+        const key = requireJournalKey();
+        const records = await this.readAll(name);
+        return Promise.all(records.filter((record) => !record.deletedAt && record.userId === userId)
+            .map((record) => decryptEntry(record, key)));
+    }
+
+    async get(id: string, name: DBName, userId?: number): Promise<Entry | undefined> {
+        const key = requireJournalKey();
+        const record = await this.transaction<EncryptedEntry | undefined>(name, "readonly", (store, result) => {
+            const request = store.get(id);
+            request.onsuccess = () => result(request.result);
+        });
+        if (record && !record.deletedAt && record.userId === userId) return decryptEntry(record, key);
+    }
+
+    async getPendingRecords(userId: number): Promise<EncryptedEntry[]> {
+        return (await this.readAll("reflections")).filter((entry) =>
+            entry.userId === userId && entry.syncStatus === "pending"
+        );
+    }
+
+    async saveToLocalDB(entry: Entry, name: DBName): Promise<IDBValidKey | undefined> {
+        try {
+            const key = requireJournalKey();
+            const {id, userId, syncStatus, lastEditedAt, deletedAt, title, content, date, createdAt, drawingPaths} = entry;
+            const record: EncryptedEntry = {
+                id, userId, syncStatus, lastEditedAt, deletedAt,
+                revision: crypto.randomUUID(),
+                payload: null,
+            };
+            if (!deletedAt) {
+                const data = await encryptJson(key, {title, content, date, createdAt, drawingPaths}, entryContext(record));
+                record.payload = {version: 1, ...data};
+            }
+
+            return await this.transaction<IDBValidKey | undefined>(name, "readwrite", (store, result) => {
+                const read = store.get(id);
+                read.onsuccess = () => {
+                    const existing: EncryptedEntry | undefined = read.result;
+                    if (existing?.deletedAt ||
+                        (existing?.userId !== undefined && existing.userId !== userId) ||
+                        (existing && !deletedAt && existing.lastEditedAt > lastEditedAt)) {
+                        result(undefined);
                         return;
                     }
-
-                    const write = store.put(obj);
-                    write.onsuccess = () => { savedKey = write.result; };
-                };
-
-                transaction.oncomplete = () => {
-                    db.close();
-                    console.log(`Entry id=${String(savedKey)} saved to offline database`);
-                    resolve(savedKey);
-                };
-                transaction.onerror = () => {
-                    db.close();
-                    reject(transaction.error ?? new Error(`Saving to ${name} database failed`));
-                };
-                transaction.onabort = () => {
-                    db.close();
-                    reject(transaction.error ?? new Error(`Saving to ${name} database was aborted`));
+                    const write = store.put(record);
+                    write.onsuccess = () => result(write.result);
                 };
             });
-        } catch (error) {
-            console.error("Error saving entry to offline database:", error);
+        } catch {
+            return undefined;
         }
+    }
+
+    async applySyncAcknowledgements(userId: number, acknowledgements: SyncAcknowledgement[]) {
+        return this.transaction<SyncAcknowledgement[]>("reflections", "readwrite", (store, result) => {
+            const applied: SyncAcknowledgement[] = [];
+            result(applied);
+            for (const acknowledgement of acknowledgements) {
+                const read = store.get(acknowledgement.id);
+                read.onsuccess = () => {
+                    const existing: EncryptedEntry | undefined = read.result;
+                    if (!existing || existing.userId !== userId) return;
+
+                    if (acknowledgement.deletedAt) {
+                        store.put({
+                            ...existing,
+                            ...acknowledgement,
+                            syncStatus: "synced",
+                            payload: null,
+                        });
+                    } else if (!existing.deletedAt && existing.revision === acknowledgement.revision) {
+                        store.put({...existing, syncStatus: "synced"});
+                    } else {
+                        return;
+                    }
+                    applied.push(acknowledgement);
+                };
+            }
+        });
     }
 }

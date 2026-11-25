@@ -23,8 +23,8 @@ export function sortEntriesByDate(entries: Entry[], field: EntrySortField) {
     return entries.sort((first, second) => new Date(second[field]).getTime() - new Date(first[field]).getTime());
 }
 
-export async function isEntryEmpty(id: string) {
-    const entry = await db.get(id, "reflections")
+export async function isEntryEmpty(id: string, userId?: number) {
+    const entry = await db.get(id, "reflections", userId)
     if (!entry) return Error("Entry not found");
     const normalizedEntry = normalizeEntry(entry);
     return normalizedEntry.content.length === 1 && normalizedEntry.content[0] === "" && normalizedEntry.title === "" && normalizedEntry.drawingPaths.length === 0

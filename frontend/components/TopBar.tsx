@@ -3,8 +3,9 @@
 import { SVG_PATHS } from "@/constants/svgPaths";
 import {useEffect, useState} from "react";
 import BarItem from "@/components/BarItem";
-import {createEmptyEntry, isEntryEmpty} from "@/utils/entryUtils";
+import {isEntryEmpty} from "@/utils/entryUtils";
 import {usePathname, useRouter} from "next/navigation";
+import {useJournalUnlocked} from "@/lib/vault/session";
 import {useAuth} from "@/lib/context/auth";
 import {AnimatePresence, motion} from "motion/react";
 
@@ -16,7 +17,8 @@ type DropDownItem = {
 export default function TopBar() {
     const [dropDownOpen, setDropDownOpen] = useState<boolean>(false);
     const [dropDownItems, setDropDownItems] = useState<DropDownItem[]>([])
-    const user = useAuth()
+    const user = useAuth();
+    const unlocked = useJournalUnlocked();
     const pathname = usePathname();
     const router = useRouter();
 
@@ -47,14 +49,13 @@ export default function TopBar() {
     }
 
     const createNewEntry = async () => {
-        if (window.location.pathname.includes("/entry/")) {
+        if (unlocked && window.location.pathname.startsWith("/entry/") && window.location.pathname !== "/entry/new") {
             const id = window.location.pathname.split("/")[2]
-            const isCurrentEntryEmpty = await isEntryEmpty(id)
+            const isCurrentEntryEmpty = await isEntryEmpty(id, user.userId ?? undefined)
             if (isCurrentEntryEmpty === true) return router.refresh();
         }
 
-        const emptyEntry = await createEmptyEntry(user.userId);
-        router.push(`/entry/${emptyEntry.id}`);
+        router.push("/entry/new");
     }
 
     if (pathname === "/") return;

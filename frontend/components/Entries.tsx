@@ -9,13 +9,14 @@ import {SVG_PATHS} from "@/constants/svgPaths";
 import {useAuth} from "@/lib/context/auth";
 import Database from "@/lib/database";
 import type {Entry} from "@/types/entryTypes";
-import {createEmptyEntry, normalizeEntry, sortEntriesByDate, type EntrySortField} from "@/utils/entryUtils";
+import {normalizeEntry, sortEntriesByDate, type EntrySortField} from "@/utils/entryUtils";
 
 const db = new Database();
 
 export default function Entries() {
     const [entries, setEntries] = useState<Entry[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadFailed, setLoadFailed] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [pendingDeletion, setPendingDeletion] = useState<Entry>();
     const deleteTrigger = useRef<HTMLElement | null>(null);
@@ -35,11 +36,11 @@ export default function Entries() {
 
         async function loadEntries() {
             try {
-                const storedEntries = (await db.getAll("reflections")) ?? [];
+                const storedEntries = (await db.getAll("reflections", userId ?? undefined)) ?? [];
                 const activeEntries = storedEntries.filter((entry) => !entry.deletedAt);
                 if (!cancelled) setEntries(activeEntries.map(normalizeEntry));
-            } catch (error) {
-                console.error("Failed loading IndexedDB entries:", error);
+            } catch {
+                if (!cancelled) setLoadFailed(true);
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -48,11 +49,6 @@ export default function Entries() {
         void loadEntries();
         return () => { cancelled = true; };
     }, [userId]);
-
-    async function createEntry() {
-        const entry = await createEmptyEntry(userId);
-        router.push(`/entry/${entry.id}`);
-    }
 
     async function deleteEntry(entry: Entry) {
         if (deleting || entry.userId !== (userId ?? undefined)) return;
@@ -122,7 +118,7 @@ export default function Entries() {
                     </details>
                     <button
                         type="button"
-                        onClick={createEntry}
+                        onClick={() => router.push("/entry/new")}
                         className="cursor-pointer rounded-full bg-[#a23743] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#7f2632] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a23743]"
                     >
                         <span aria-hidden="true">+ </span>New reflection
@@ -132,10 +128,11 @@ export default function Entries() {
 
             {deleteMessage && <p role="status" className="mb-4 text-sm text-[#654d50]">{deleteMessage}</p>}
             {loading && <p role="status" className="text-sm text-[#654d50]">Loading reflections…</p>}
+            {loadFailed && <p role="alert" className="text-sm text-[#9b3c48]">Could not open your reflections. Lock and unlock the journal, then try again.</p>}
             {!loading && hideEmpty && ownedEntries.length > 0 && visibleEntries.length === 0 && (
                 <p role="status" className="text-sm text-[#654d50]">No reflections with text.</p>
             )}
-            {!loading && ownedEntries.length === 0 && (
+            {!loading && !loadFailed && ownedEntries.length === 0 && (
                 <div className="mx-auto flex min-h-[36vh] max-w-lg flex-col items-center justify-center rounded-2xl border border-[#ead9d3]/55 bg-[#faf5ee] px-6 py-8 text-center">
                     <span aria-hidden="true">
                         <DrawIcon svgPaths={SVG_PATHS.flowerIcon} strokeWidth={1.5} iconSize={54} fill="#9b3c48" />
