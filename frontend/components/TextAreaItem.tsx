@@ -1,7 +1,7 @@
 "use client"
 
 import {useSortable} from "@dnd-kit/react/sortable";
-import React, {useId, useState} from "react";
+import React, {useId, useLayoutEffect, useRef, useState} from "react";
 import {AnimatedSuggestionText, SuggestionTabCallout} from "./InlineSuggestionEffects";
 import {TextBox} from "@/types/customTypes";
 
@@ -37,6 +37,9 @@ export default function TextAreaItem({
     onDismissSuggestion = () => {},
 }: TextAreaItemProps) {
     const suggestionHintId = useId();
+    const ghostTextRef = useRef<HTMLSpanElement>(null);
+    const tooltipRowRef = useRef<HTMLDivElement>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
     const [tabAccepted, setTabAccepted] = useState(false);
     const {ref, handleRef, isDragging, isDropTarget} = useSortable({
         id: line.id,
@@ -56,6 +59,35 @@ export default function TextAreaItem({
         ? " "
         : "";
     const suggestionPrefix = activeStarter ? "" : line.text + autocompleteSeparator;
+
+    useLayoutEffect(() => {
+        const ghostText = ghostTextRef.current;
+        const row = tooltipRowRef.current;
+        const tooltip = tooltipRef.current;
+        // Keep the last position while the accepted callout fades out.
+        if (!suggestion || !ghostText || !row || !tooltip) return;
+
+        const positionTooltip = () => {
+            const firstFragment = Array.from(ghostText.getClientRects()).find((rect) => rect.width > 0);
+            const rowBounds = row.getBoundingClientRect();
+            if (!firstFragment || !rowBounds.width) return;
+
+            const availableWidth = rowBounds.width - tooltip.getBoundingClientRect().width;
+            const offset = Math.max(0, Math.min(firstFragment.left - rowBounds.left, availableWidth));
+            // Bounding rectangles use viewport pixels, while padding uses the editor's zoomed coordinate space.
+            row.style.paddingInlineStart = `${offset * row.clientWidth / rowBounds.width}px`;
+        };
+
+        positionTooltip();
+        window.addEventListener("resize", positionTooltip);
+        const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(positionTooltip);
+        observer?.observe(row);
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener("resize", positionTooltip);
+        };
+    }, [suggestion, suggestionPrefix]);
+
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (suggestion && event.key === "Tab") {
             event.preventDefault();
@@ -142,22 +174,27 @@ export default function TextAreaItem({
                         className="pointer-events-none absolute inset-0 z-[1] w-full whitespace-pre-wrap break-words font-mono text-base leading-6.75 text-black"
                     >
                         <span className="invisible">{suggestionPrefix}</span>
-                        <AnimatedSuggestionText key={suggestion} text={suggestion} state="visible" />
+                        <span ref={ghostTextRef}>
+                            <AnimatedSuggestionText key={suggestion} text={suggestion} state="visible" />
+                        </span>
                     </div>
                 )}
             </div>
             {(suggestion || tabAccepted) && (
                 <div
+                    ref={tooltipRowRef}
                     id={suggestionHintId}
                     aria-hidden={tabAccepted || undefined}
-                    className="pointer-events-none flex py-px [zoom:calc(1/var(--entry-scale,1))]"
+                    className="pointer-events-none flex"
                 >
-                    <SuggestionTabCallout
-                        className="relative rounded-sm px-[3px] py-px text-[7px] leading-none before:left-[5px] before:border-2 [&_kbd]:mr-0.5"
-                        state={tabAccepted ? "accepted" : "visible"}
-                        tabPressed={tabAccepted}
-                        onAcceptedAnimationComplete={() => setTabAccepted(false)}
-                    />
+                    <div ref={tooltipRef} className="flex shrink-0 py-px [zoom:calc(1/var(--entry-scale,1))]">
+                        <SuggestionTabCallout
+                            className="relative rounded-sm px-[3.5px] py-px text-[10px] leading-[1.1] before:left-[5px] before:border-2 [&_kbd]:mr-0.5"
+                            state={tabAccepted ? "accepted" : "visible"}
+                            tabPressed={tabAccepted}
+                            onAcceptedAnimationComplete={() => setTabAccepted(false)}
+                        />
+                    </div>
                 </div>
             )}
         </div>
