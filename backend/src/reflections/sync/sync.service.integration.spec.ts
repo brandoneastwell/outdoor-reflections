@@ -183,13 +183,48 @@ describe('SyncService integration', () => {
     );
   });
 
+  it('keeps only the deletion marker and removes the stored journal data and suggestions', async () => {
+    const original = testReflections[0];
+    const deletedAt = '2026-08-13T12:00:00.000Z';
+    const beforeDeletion = await prisma.reflection.update({
+      where: { id: original.id },
+      data: {
+        title: 'Trail journal',
+        content: ['Journal notes'],
+        drawingPaths: [{ path: 'M0 0L10 10', color: '#000000' }],
+        suggestions: {
+          create: { type: 'sentence_starter', text: 'I saw a wren' },
+        },
+      },
+    });
+
+    await syncService.syncEntries([{ ...original, deletedAt }], testUser);
+
+    const persisted = await prisma.reflection.findUniqueOrThrow({
+      where: { id: original.id },
+      include: { suggestions: true },
+    });
+    expect(persisted).toMatchObject({
+      id: original.id,
+      userId: testUser.id,
+      date: beforeDeletion.date,
+      createdAt: beforeDeletion.createdAt,
+      deletedAt: new Date(deletedAt),
+      lastEditedAt: new Date(deletedAt),
+      title: '',
+      content: [],
+      drawingPaths: [],
+      suggestions: [],
+    });
+  });
+
   it('acknowledges a deletion on retry and ignores a later upload for the deleted ID', async () => {
     const original = testReflections[0];
     const deletedAt = '2026-08-13T12:00:00.000Z';
     const deletion = { ...original, deletedAt };
     const attempts = [
       deletion,
-      deletion,
+      { ...deletion, deletedAt: '2026-08-13T12:01:00.000Z' },
       { ...original, lastEditedAt: '2026-08-14T12:00:00.000Z' },
     ];
 
@@ -208,22 +243,34 @@ describe('SyncService integration', () => {
     }
   });
 
-  it('records a deletion for an entry that has never reached the server', async () => {
-    const deletion = {
+  it('blocks a later first upload for an entry deleted before it reached the server', async () => {
+    const original = {
       ...testReflections[0],
       id: randomUUID(),
-      deletedAt: '2026-08-13T12:00:00.000Z',
+      title: 'Unsent reflection',
+      content: ['Unsent journal notes'],
     };
+    const deletedAt = '2026-08-13T12:00:00.000Z';
 
-    const response = await syncService.syncEntries([deletion], testUser);
+    const deletion = await syncService.syncEntries(
+      [{ ...original, deletedAt }],
+      testUser,
+    );
+    const staleUpload = await syncService.syncEntries([original], testUser);
 
-    expect(response.status).toBe('SUCCESS');
-    expect(response.synced_entries).toEqual([
-      expect.objectContaining({
-        id: deletion.id,
-        deletedAt: new Date(deletion.deletedAt),
-      }),
-    ]);
+    expect(deletion.status).toBe('SUCCESS');
+    expect(deletion.synced_entries).toHaveLength(1);
+    expect(staleUpload.status).toBe('SUCCESS');
+    expect(staleUpload.count.created).toBe(0);
+    expect(staleUpload.synced_entries).toEqual(deletion.synced_entries);
+    expect(
+      await prisma.reflection.findUniqueOrThrow({ where: { id: original.id } }),
+    ).toMatchObject({
+      userId: testUser.id,
+      deletedAt: new Date(deletedAt),
+      title: '',
+      content: [],
+    });
   });
 
   it('rejects a deletion for a reflection owned by another user', async () => {
