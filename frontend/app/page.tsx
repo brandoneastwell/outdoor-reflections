@@ -1,111 +1,74 @@
 import Link from "next/link";
 import DrawIcon from "@/components/DrawIcon";
+import LandingEntryPreview from "@/components/LandingEntryPreview";
 import StartButton from "@/components/StartButton";
 import {SVG_PATHS} from "@/constants/svgPaths";
-import styles from "./page.module.css";
 
-function Garden() {
-  return (
-    <svg aria-hidden="true" className={styles.garden} viewBox="0 0 760 330" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <g className={styles.stems} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M51 322c7-55 11-106 1-169M52 211c-19-9-32-25-37-47 24 4 38 18 37 47ZM54 245c20-12 33-30 37-54-23 5-37 23-37 54Z" />
-        <path d="M119 327c-2-86 4-157 30-228M131 186c-27-12-44-33-48-62 30 5 47 25 48 62ZM134 221c27-10 46-30 55-58-31 2-49 22-55 58ZM145 112c-11-17-12-36-3-55 16 17 17 36 3 55Z" />
-        <path d="M225 326c4-65 2-124-13-177M217 175c20-20 27-44 20-72-23 17-29 42-20 72ZM219 218c-26-6-47-20-61-43 29-2 50 12 61 43Z" />
-        <path d="M303 327c-5-98 9-181 43-249M324 187c-31-12-51-36-56-69 34 6 54 29 56 69ZM326 227c31-11 54-32 66-63-36 2-58 23-66 63ZM342 91c-5-25 1-46 19-63 9 26 3 47-19 63Z" />
-        <path d="M424 328c6-78 2-148-20-211M411 146c20-23 25-49 15-77-23 21-28 46-15 77ZM418 208c-32-5-57-21-73-49 35 0 59 16 73 49ZM419 250c31-6 54-24 69-51-35 0-58 17-69 51Z" />
-        <path d="M532 327c-2-88 11-160 43-217M550 196c-29-13-47-36-51-68 32 6 50 29 51 68ZM555 239c29-9 51-29 63-57-33 1-54 20-63 57ZM572 122c-4-22 2-41 18-56 7 23 1 42-18 56Z" />
-        <path d="M638 327c3-72-4-137-24-190M620 164c18-22 23-46 13-72-21 19-25 44-13 72ZM627 222c-30-4-53-19-68-44 32-1 55 14 68 44Z" />
-        <path d="M710 326c-3-57 0-108 13-152M718 208c-22-10-35-28-38-52 25 5 38 22 38 52ZM716 248c21-8 37-23 46-44-24 1-40 16-46 44Z" />
-      </g>
-      <g className={styles.blooms}>
-        <path d="M201 145c-15-12-15-29 1-40 16 8 20 26 9 41-4 5-7 5-10-1Z" />
-        <path d="M397 111c-18-11-20-30-4-44 19 7 25 26 14 43-3 6-6 6-10 1Z" />
-        <path d="M604 133c-13-14-10-31 8-39 15 11 16 29 2 42-4 4-7 3-10-3Z" />
-      </g>
-      <g className={styles.seedHeads} stroke="currentColor">
-        <circle cx="50" cy="143" r="13" /><circle cx="50" cy="143" r="4" />
-        <circle cx="213" cy="137" r="10" /><circle cx="213" cy="137" r="3" />
-        <circle cx="404" cy="106" r="11" /><circle cx="404" cy="106" r="3" />
-        <circle cx="615" cy="128" r="10" /><circle cx="615" cy="128" r="3" />
-        <circle cx="724" cy="164" r="12" /><circle cx="724" cy="164" r="4" />
-      </g>
-    </svg>
-  );
-}
-
-function JournalCard() {
-  return (
-    <div className={styles.cardWrap}>
-      <div className={styles.cardGlow} />
-      <article className={styles.card} aria-label="A preview of a journal reflection">
-        <header className={styles.cardHeader}>
-          <span>Sunday · 21 September</span>
-          <span className={styles.saved}><i /> saved here</span>
-        </header>
-        <div className={styles.cardBody}>
-          <div className={styles.cardCopy}>
-            <p className={styles.eyebrow}>Today, outside</p>
-            <h2>Where the<br />light landed.</h2>
-            <p className={styles.entry}>The path opened after the trees. Everything was quiet except the grass moving in the wind.</p>
-            <div className={styles.note}>
-              <span>remember</span>
-              <p>the warm stone, one wren,<br />and the smell after rain.</p>
-            </div>
-          </div>
-          <div className={styles.sketch}>
-            <svg viewBox="0 0 180 280" fill="none" aria-hidden="true">
-              <path d="M89 267c-5-75 5-147 34-214" />
-              <path d="M100 178c-34-10-55-33-60-67 37 5 59 28 60 67Z" />
-              <path d="M99 215c34-9 59-31 72-64-38 1-62 23-72 64Z" />
-              <path d="M119 66c-6-23 0-44 18-61 9 25 3 46-18 61Z" />
-              <path d="M73 253c23 5 45 4 67-3" className={styles.groundLine} />
-            </svg>
-            <span>found here</span>
-          </div>
-        </div>
-        <footer className={styles.cardFooter}>
-          <span><i /> offline first</span>
-          <span>words + sketches</span>
-        </footer>
-      </article>
-    </div>
-  );
-}
+const features = [
+  {
+    title: "Write and sketch on one page",
+    description: "Save the details a photo might miss, from the sound of a bird to the shape of the hills.",
+    icon: SVG_PATHS.drawIcon,
+  },
+  {
+    title: "Get help when you pause",
+    description: "While you’re online, AI can suggest how to continue a thought. Press Tab to keep it or carry on in your own words.",
+    icon: SVG_PATHS.editIcon,
+  },
+  {
+    title: "Take it offline",
+    description: "Save entries on this device, even out of signal. Sign in when you want to sync your journal.",
+    icon: SVG_PATHS.cloudOffIcon,
+  },
+];
 
 export default function Home() {
   return (
-    <main className={styles.page}>
-      <div className={styles.paperGrain} />
-      <nav className={styles.nav} aria-label="Main navigation">
-        <Link href="/" className={styles.brand} aria-label="Outdoor Reflections home">
-          <DrawIcon svgPaths={SVG_PATHS.flowerIcon} strokeWidth={1.45} iconSize={30} fill="currentColor" />
-          <span>outdoor<br />reflections</span>
+    <div className="flex-1 bg-[#faf5ee] text-[#362528] [--landing-accent:#a23743] [--landing-muted:#654d50] [&_:is(a,button):focus-visible]:outline-2 [&_:is(a,button):focus-visible]:outline-offset-4 [&_:is(a,button):focus-visible]:outline-[var(--landing-accent)]">
+      <header className="mx-auto w-[min(calc(100%_-_2*clamp(1.25rem,5vw,5rem)),1240px)] flex min-h-[5.35rem] items-center justify-between gap-3 border-b border-[#ead9d3] max-[800px]:min-h-[4.6rem]">
+        <Link href="/" className="inline-flex items-center gap-[.65rem] text-[1.05rem] leading-[1.1] font-[750] tracking-[-.035em] max-[540px]:gap-[.4rem] max-[540px]:text-[.94rem]" aria-label="Outdoor Reflections home">
+          <span className="grid size-[2.45rem] flex-none place-items-center rounded-full bg-[#f4e2de] text-[var(--landing-accent)] max-[540px]:size-8" aria-hidden="true">
+            <DrawIcon svgPaths={SVG_PATHS.flowerIcon} strokeWidth={1.5} iconSize={24} />
+          </span>
+          Outdoor Reflections
         </Link>
-        <div className={styles.navLinks}>
+        <nav className="flex items-center gap-[clamp(.65rem,3vw,2rem)] text-sm font-[650] whitespace-nowrap max-[540px]:text-[.8rem] [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>a:hover]:underline [&>a:hover]:underline-offset-[.25em]" aria-label="Main navigation">
           <Link href="/entries">My journal</Link>
-          <Link href="/auth" className={styles.signIn}>Sign in <span aria-hidden="true">↗</span></Link>
-        </div>
-      </nav>
+          <Link href="/auth" className="rounded-full border border-[#dfc3bf] px-4 max-[540px]:px-[.65rem]">Sign in</Link>
+        </nav>
+      </header>
 
-      <section className={styles.hero}>
-        <div className={styles.intro}>
-          <h1>Keep the little<br />things you notice.</h1>
-          <p className={styles.subhead}>A journal for reflecting on your time in the wild, through sketches or text, available offline.</p>
-          <div className={styles.actions}>
-            <StartButton label="Begin a reflection" className={styles.primaryAction} />
-            <Link href="/entries" className={styles.textAction}>Open my journal <span aria-hidden="true">→</span></Link>
+      <main className="mx-auto w-[min(calc(100%_-_2*clamp(1.25rem,5vw,5rem)),1240px)]">
+        <section className="grid grid-cols-[minmax(0,.87fr)_minmax(0,1.13fr)] items-center gap-[clamp(1.5rem,4.4vw,5rem)] pt-[clamp(2rem,4.5vw,4rem)] pb-[clamp(2.75rem,5vw,4.5rem)] max-[800px]:grid-cols-1 max-[800px]:gap-[1.8rem] max-[800px]:pt-[2.6rem]" aria-labelledby="hero-title">
+          <div>
+            <h1 id="hero-title" className="font-[Georgia,serif] text-[length:clamp(3.35rem,6.3vw,6.2rem)] leading-[.97] tracking-[-.073em] max-[800px]:text-[length:clamp(3.5rem,10vw,5rem)]">
+              Journal your time <em className="text-[var(--landing-accent)]">outdoors.</em>
+            </h1>
+            <p className="mt-[1.65rem] max-w-[25rem] text-[length:clamp(1rem,1.35vw,1.18rem)] leading-[1.6] text-[var(--landing-muted)]">
+              Write and sketch what you notice outside before the details fade. When you’re stuck for words, an AI suggestion can help you keep going.
+            </p>
+            <div className="mt-[1.85rem]">
+              <StartButton label="Start a reflection" className="h-auto! min-h-13 w-fit! gap-[.85rem] rounded-full! bg-[var(--landing-accent)]! px-[1.3rem]! shadow-none! hover:bg-[#7f2632]!" />
+              <p className="mt-[.8rem] text-[.79rem] text-[var(--landing-muted)]">No account needed to start.</p>
+            </div>
           </div>
-          <p className={styles.promise}><span>✦</span> No account needed · works without a signal</p>
-        </div>
 
-        <div className={styles.visual}>
-          <p className={styles.year} aria-hidden="true">2026</p>
-          <p className={styles.yearLabel}>your year, growing slowly</p>
-          <JournalCard />
-        </div>
-      </section>
+          <LandingEntryPreview />
+        </section>
 
-      <div className={styles.gardenBed}><Garden /></div>
-    </main>
+        <section className="grid grid-cols-3 gap-x-[clamp(1.6rem,4vw,4rem)] gap-y-6 border-t border-[#ead9d3] pt-[1.8rem] pb-12 max-[540px]:grid-cols-1" aria-labelledby="how-it-works">
+          <h2 id="how-it-works" className="col-span-full font-[Georgia,serif] text-[length:clamp(1.75rem,3vw,2.5rem)] tracking-[-.04em]">How it works</h2>
+          {features.map(({title, description, icon}) => (
+            <article key={title}>
+              <span className="grid size-[2.45rem] flex-none place-items-center rounded-full bg-[#f4e2de] text-[var(--landing-accent)]" aria-hidden="true">
+                <DrawIcon svgPaths={icon} strokeWidth={1.5} iconSize={23} />
+              </span>
+              <h3 className="mt-[.85rem] font-[Georgia,serif] text-[1.45rem] tracking-[-.025em]">{title}</h3>
+              <p className="mt-[.4rem] max-w-80 text-[.95rem] leading-[1.6] text-[var(--landing-muted)]">{description}</p>
+            </article>
+          ))}
+        </section>
+      </main>
+    </div>
   );
 }

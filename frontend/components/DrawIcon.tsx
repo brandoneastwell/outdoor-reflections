@@ -4,7 +4,7 @@ import {getStroke} from "perfect-freehand";
 import {getSvgPathFromStroke} from "@/utils/getSvgPathFromStroke";
 import {lineToPoints} from "@/utils/svgPoints";
 import {Point} from "@/types/customTypes";
-import {AnimatePresence, motion} from "motion/react";
+import {AnimatePresence, motion, useReducedMotion} from "motion/react";
 import {useSyncExternalStore} from "react";
 
 const subscribeToClient = () => () => {};
@@ -29,16 +29,64 @@ function createPointsFromSVGPath(path: string) {
     return points
 }
 
-export default function DrawIcon({ svgPaths, fill, strokeWidth = 2, iconSize = 24 } : { svgPaths: string[], fill?: string, strokeWidth?: number, iconSize?: number }) {
+type DrawIconProps = {
+    svgPaths: string[];
+    fill?: string;
+    strokeWidth?: number;
+    iconSize?: number;
+    viewBox?: string;
+    className?: string;
+    label?: string;
+    drawOnLoad?: boolean;
+};
+
+export default function DrawIcon({
+    svgPaths,
+    fill,
+    strokeWidth = 2,
+    iconSize = 24,
+    viewBox = "0 0 24 24",
+    className,
+    label,
+    drawOnLoad = false,
+}: DrawIconProps) {
+    const reduceMotion = useReducedMotion();
     const isMounted = useSyncExternalStore(
         subscribeToClient,
         () => true,
         () => false,
     );
 
+    const svgProps = {
+        height: iconSize,
+        width: iconSize,
+        viewBox,
+        className,
+        role: label ? "img" : undefined,
+        "aria-label": label,
+        xmlns: "http://www.w3.org/2000/svg",
+    };
+
     if (!isMounted) {
+        return <svg {...svgProps} fill={fill} />;
+    }
+
+    if (drawOnLoad) {
         return (
-            <svg height={iconSize} width={iconSize} viewBox="0 0 24 24" fill={fill} xmlns="http://www.w3.org/2000/svg" />
+            <svg {...svgProps} fill="none" stroke={fill ?? "currentColor"} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+                {svgPaths.map((path, index) => (
+                    <motion.path
+                        key={index}
+                        d={path}
+                        initial={reduceMotion ? false : {pathLength: 0, opacity: 0}}
+                        animate={{pathLength: 1, opacity: 1}}
+                        transition={{
+                            pathLength: {duration: 1.1, delay: index * 0.32, ease: "easeInOut"},
+                            opacity: {duration: 0, delay: index * 0.32},
+                        }}
+                    />
+                ))}
+            </svg>
         );
     }
 
@@ -73,7 +121,7 @@ export default function DrawIcon({ svgPaths, fill, strokeWidth = 2, iconSize = 2
     }
 
     return (
-        <svg height={iconSize} width={iconSize} viewBox="0 0 24 24" fill={fill} xmlns="http://www.w3.org/2000/svg">
+        <svg {...svgProps} fill={fill}>
             <AnimatePresence>
                 { paths.map((path, index) =>
                     <motion.path
