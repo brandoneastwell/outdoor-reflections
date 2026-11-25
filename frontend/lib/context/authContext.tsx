@@ -124,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!entries) return;
 
         const entriesToSync = entries.filter(entry => entry.syncStatus === "pending" && entry.userId === authenticatedUserId)
+        if (entriesToSync.length === 0) return;
         console.log(entriesToSync)
 
         const res = await fetch(`${API_URL}/reflection/sync`, {
@@ -144,9 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const results: SyncResponse = await res.json()
         const synced = results.synced_entries.map(entry => { return {...entry, syncStatus: "synced"} })
-        synced.forEach(entry => {
-            db.saveToLocalDB(entry as Entry, "reflections")
-        })
+        await Promise.all(synced.map(entry => db.saveToLocalDB(entry as Entry, "reflections")))
 
         console.log(results)
         return results

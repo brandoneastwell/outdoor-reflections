@@ -15,6 +15,7 @@ export type Entry = {
     syncStatus: SyncStatus;
     lastEditedAt: string;
     createdAt: string;
+    deletedAt?: string | null;
 }
 
 export type SyncResponse = {

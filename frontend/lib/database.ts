@@ -88,7 +88,8 @@ export default class Database {
             let entry: DBTypes | undefined;
 
             request.onsuccess = () => {
-                entry = request.result;
+                const result: Entry | undefined = request.result;
+                entry = result?.deletedAt ? undefined : result;
             };
             transaction.oncomplete = () => {
                 db.close();
@@ -111,11 +112,19 @@ export default class Database {
             return await new Promise((resolve, reject) => {
                 const transaction = db.transaction(name, "readwrite");
                 const store = transaction.objectStore(name);
-                const request = store.put(obj);
+                const request = store.get(obj.id);
                 let savedKey: IDBValidKey | undefined;
 
                 request.onsuccess = () => {
-                    savedKey = request.result;
+                    const existing: Entry | undefined = request.result;
+                    // A stale editor or sync response must not restore a deleted reflection.
+                    if (existing?.deletedAt && (!obj.deletedAt || existing.syncStatus === "synced")) {
+                        savedKey = existing.id;
+                        return;
+                    }
+
+                    const write = store.put(obj);
+                    write.onsuccess = () => { savedKey = write.result; };
                 };
 
                 transaction.oncomplete = () => {
@@ -125,7 +134,7 @@ export default class Database {
                 };
                 transaction.onerror = () => {
                     db.close();
-                    reject(transaction.error ?? request.error);
+                    reject(transaction.error ?? new Error(`Saving to ${name} database failed`));
                 };
                 transaction.onabort = () => {
                     db.close();

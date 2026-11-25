@@ -15,8 +15,11 @@ const db = new Database();
 export default function Entries() {
     const [entries, setEntries] = useState<Entry[]>([]);
     const [loading, setLoading] = useState(true);
-    const {userId} = useAuth();
+    const [deleting, setDeleting] = useState(false);
+    const [deleteMessage, setDeleteMessage] = useState("");
+    const {userId, syncPendingEntries, refresh} = useAuth();
     const router = useRouter();
+    const visibleEntries = entries.filter((entry) => entry.userId === (userId ?? undefined));
 
     useEffect(() => {
         let cancelled = false;
@@ -24,8 +27,8 @@ export default function Entries() {
         async function loadEntries() {
             try {
                 const storedEntries = (await db.getAll("reflections")) ?? [];
-                const ownedEntries = storedEntries.filter((entry) => entry.userId === (userId ?? undefined));
-                if (!cancelled) setEntries(sortEntriesByLastUpdated(ownedEntries.map(normalizeEntry)));
+                const activeEntries = storedEntries.filter((entry) => !entry.deletedAt);
+                if (!cancelled) setEntries(sortEntriesByLastUpdated(activeEntries.map(normalizeEntry)));
             } catch (error) {
                 console.error("Failed loading IndexedDB entries:", error);
             } finally {
@@ -42,6 +45,51 @@ export default function Entries() {
         router.push(`/entry/${entry.id}`);
     }
 
+    async function deleteEntry(entry: Entry) {
+        if (deleting || entry.userId !== (userId ?? undefined)) return;
+        const title = entry.title.trim() || "Untitled reflection";
+        if (!window.confirm(`Delete “${title}”? This permanently removes the reflection.`)) return;
+
+        setDeleting(true);
+        setDeleteMessage("");
+        try {
+            const deletedAt = new Date().toISOString();
+            const saved = await db.saveToLocalDB({
+                ...entry,
+                title: "",
+                content: [],
+                drawingPaths: [],
+                deletedAt,
+                lastEditedAt: deletedAt,
+                syncStatus: entry.userId === undefined ? "synced" : "pending",
+            }, "reflections");
+
+            if (saved === undefined) {
+                setDeleteMessage("Could not delete the reflection. Please try again.");
+                return;
+            }
+
+            setEntries((previous: Entry[]) => previous.filter(({id}) => id !== entry.id));
+            if (entry.userId === undefined) return;
+
+            if (navigator.onLine) {
+                try {
+                    const result = await syncPendingEntries().catch(async (error: unknown) => {
+                        if (!(error instanceof Error) || error.message !== "Unauthorized") throw error;
+                        const response = await refresh();
+                        return response.ok ? syncPendingEntries() : undefined;
+                    });
+                    if (result?.synced_entries.some(({id, deletedAt}) => id === entry.id && deletedAt)) return;
+                } catch {
+                    // The saved deletion stays pending until sync acknowledges it.
+                }
+            }
+            setDeleteMessage("Deletion will sync when you reconnect.");
+        } finally {
+            setDeleting(false);
+        }
+    }
+
     return (
         <main className="mx-auto w-full max-w-6xl px-5 pt-2 pb-12 text-[#362528] sm:px-8">
             <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#ead9d3] pb-4">
@@ -55,8 +103,9 @@ export default function Entries() {
                 </button>
             </header>
 
+            {deleteMessage && <p role="status" className="mb-4 text-sm text-[#654d50]">{deleteMessage}</p>}
             {loading && <p role="status" className="text-sm text-[#654d50]">Loading reflections…</p>}
-            {!loading && entries.length === 0 && (
+            {!loading && visibleEntries.length === 0 && (
                 <div className="mx-auto flex min-h-[36vh] max-w-lg flex-col items-center justify-center rounded-2xl border border-[#ead9d3] bg-[#faf5ee] px-6 py-8 text-center">
                     <span aria-hidden="true">
                         <DrawIcon svgPaths={SVG_PATHS.flowerIcon} strokeWidth={1.5} iconSize={54} fill="#9b3c48" />
@@ -67,13 +116,13 @@ export default function Entries() {
             )}
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {entries.map((entry) => (
+                {visibleEntries.map((entry) => (
                     <article key={entry.id} className="relative min-w-0 rounded-2xl border border-[#ead9d3] bg-[#fffaf2] shadow-sm transition-shadow hover:shadow-md">
                         <Link
                             href={`/entry/${entry.id}`}
                             className="block rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a23743]"
                         >
-                            <p className="text-sm font-semibold text-[#9b3c48]">
+                            <p className="pr-9 text-sm font-semibold text-[#9b3c48]">
                                 {new Date(entry.date).toLocaleDateString("en-GB", {weekday: "long", day: "numeric", month: "long"})}
                             </p>
                             <h2 className="mt-1 truncate font-flower text-2xl font-semibold leading-tight">
@@ -94,6 +143,27 @@ export default function Entries() {
                                 </div>
                             </div>
                         </Link>
+                        <details className="absolute top-2 right-2 open:z-10">
+                            <summary
+                                aria-label={`Actions for ${entry.title.trim() || "Untitled reflection"}`}
+                                className="grid size-9 cursor-pointer list-none place-items-center rounded-full text-xl text-[#9b3c48] hover:bg-[#f4e2de] focus-visible:outline-2 focus-visible:outline-[#a23743] [&::-webkit-details-marker]:hidden"
+                            >
+                                <span aria-hidden="true">⋯</span>
+                            </summary>
+                            <button
+                                type="button"
+                                disabled={deleting}
+                                className="absolute top-full right-0 cursor-pointer rounded-lg border border-[#ead9d3] bg-[#fffaf2] px-3 py-2 text-sm font-semibold whitespace-nowrap text-[#9b3c48] shadow-md hover:bg-[#f4e2de] focus-visible:outline-2 focus-visible:outline-[#a23743] disabled:cursor-wait"
+                                onClick={(event) => {
+                                    const menu = event.currentTarget.closest("details");
+                                    menu?.removeAttribute("open");
+                                    menu?.querySelector("summary")?.focus();
+                                    void deleteEntry(entry);
+                                }}
+                            >
+                                Delete reflection
+                            </button>
+                        </details>
                     </article>
                 ))}
             </div>
