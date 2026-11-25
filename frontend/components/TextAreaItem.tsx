@@ -150,10 +150,10 @@ export default function TextAreaItem({
                 <div
                     id={suggestionHintId}
                     aria-hidden={tabAccepted || undefined}
-                    className="pointer-events-none flex pt-0.5 pb-0.5"
+                    className="pointer-events-none flex py-px [zoom:calc(1/var(--entry-scale,1))]"
                 >
                     <SuggestionTabCallout
-                        className="relative rounded-sm px-[.22rem] py-[.06rem] text-[.5rem] before:left-[.35rem] before:border-[.15rem] [&_kbd]:mr-0.5"
+                        className="relative rounded-sm px-[3px] py-px text-[7px] leading-none before:left-[5px] before:border-2 [&_kbd]:mr-0.5"
                         state={tabAccepted ? "accepted" : "visible"}
                         tabPressed={tabAccepted}
                         onAcceptedAnimationComplete={() => setTabAccepted(false)}
