@@ -98,21 +98,21 @@ export default function Entries() {
 
     return (
         <main className="mx-auto w-full max-w-6xl px-5 pt-2 pb-12 text-[#362528] sm:px-8">
-            <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#ead9d3] pb-4">
+            <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[#ead9d3]/55 pb-4">
                 <h1 className="font-flower text-4xl leading-none font-semibold sm:text-5xl">Your reflections</h1>
                 <div className="flex flex-wrap items-center gap-2">
                     <details className="relative open:z-20">
-                        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-[#ead9d3] px-3 py-2 text-sm font-semibold hover:bg-[#f4e2de] focus-visible:outline-2 focus-visible:outline-[#a23743] [&::-webkit-details-marker]:hidden">
+                        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-[#ead9d3]/55 px-3 py-2 text-sm font-semibold hover:bg-[#f4e2de] focus-visible:outline-2 focus-visible:outline-[#a23743] [&::-webkit-details-marker]:hidden">
                             Filter &amp; sort <span aria-hidden="true">▾</span>
                         </summary>
-                        <div className="absolute top-full left-0 mt-2 grid w-52 gap-3 rounded-xl border border-[#ead9d3] bg-[#fffaf2] p-3 text-sm shadow-md">
+                        <div className="absolute top-full left-0 mt-2 grid w-52 gap-3 rounded-xl border border-[#ead9d3]/55 bg-[#fffaf2] p-3 text-sm shadow-md">
                             <label className="flex cursor-pointer items-center gap-2">
                                 <input type="checkbox" checked={hideEmpty} onChange={(event) => setHideEmpty(event.target.checked)} className="accent-[#a23743]" />
                                 Hide empty reflections
                             </label>
                             <label className="grid gap-1">
                                 Sort by
-                                <select value={sortField} onChange={(event) => setSortField(event.target.value as EntrySortField)} className="rounded-md border border-[#ead9d3] bg-white p-1.5">
+                                <select value={sortField} onChange={(event) => setSortField(event.target.value as EntrySortField)} className="rounded-md border border-[#ead9d3]/55 bg-white p-1.5">
                                     <option value="lastEditedAt">Last edited</option>
                                     <option value="createdAt">Creation date</option>
                                     <option value="date">Entry date</option>
@@ -136,7 +136,7 @@ export default function Entries() {
                 <p role="status" className="text-sm text-[#654d50]">No reflections with text.</p>
             )}
             {!loading && ownedEntries.length === 0 && (
-                <div className="mx-auto flex min-h-[36vh] max-w-lg flex-col items-center justify-center rounded-2xl border border-[#ead9d3] bg-[#faf5ee] px-6 py-8 text-center">
+                <div className="mx-auto flex min-h-[36vh] max-w-lg flex-col items-center justify-center rounded-2xl border border-[#ead9d3]/55 bg-[#faf5ee] px-6 py-8 text-center">
                     <span aria-hidden="true">
                         <DrawIcon svgPaths={SVG_PATHS.flowerIcon} strokeWidth={1.5} iconSize={54} fill="#9b3c48" />
                     </span>
@@ -147,7 +147,7 @@ export default function Entries() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visibleEntries.map((entry) => (
-                    <article key={entry.id} className="relative min-w-0 rounded-2xl border border-[#ead9d3] bg-[#fffaf2] shadow-sm transition-shadow hover:shadow-md">
+                    <article key={entry.id} className="relative min-w-0 rounded-2xl border border-[#ead9d3]/30 bg-[#fffaf2] shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-[#9b3c48]/30 hover:shadow-[0_0_16px_#9b3c4817] focus-within:border-[#9b3c48]/55 motion-reduce:transition-none">
                         <Link
                             href={`/entry/${entry.id}`}
                             className="block rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a23743]"
@@ -183,7 +183,7 @@ export default function Entries() {
                             <button
                                 type="button"
                                 disabled={deleting}
-                                className="absolute top-full right-0 cursor-pointer rounded-lg border border-[#ead9d3] bg-[#fffaf2] px-3 py-2 text-sm font-semibold whitespace-nowrap text-[#9b3c48] shadow-md hover:bg-[#f4e2de] focus-visible:outline-2 focus-visible:outline-[#a23743] disabled:cursor-wait"
+                                className="absolute top-full right-0 cursor-pointer rounded-lg border border-[#ead9d3]/55 bg-[#fffaf2] px-3 py-2 text-sm font-semibold whitespace-nowrap text-[#9b3c48] shadow-md hover:bg-[#f4e2de] focus-visible:outline-2 focus-visible:outline-[#a23743] disabled:cursor-wait"
                                 onClick={(event) => {
                                     const menu = event.currentTarget.closest("details");
                                     deleteTrigger.current = menu?.querySelector("summary") ?? null;
