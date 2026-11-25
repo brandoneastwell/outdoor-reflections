@@ -24,7 +24,7 @@ const features = [
 
 export default function Home() {
   return (
-    <div className="flex-1 bg-[#faf5ee] text-[#362528] [--landing-accent:#a23743] [--landing-muted:#654d50] [&_:is(a,button):focus-visible]:outline-2 [&_:is(a,button):focus-visible]:outline-offset-4 [&_:is(a,button):focus-visible]:outline-[var(--landing-accent)]">
+    <div className="lokta-paper flex-1 bg-[#faf5ee] text-[#362528] [--landing-accent:#a23743] [--landing-muted:#654d50] [&_:is(a,button):focus-visible]:outline-2 [&_:is(a,button):focus-visible]:outline-offset-4 [&_:is(a,button):focus-visible]:outline-[var(--landing-accent)]">
       <header className="mx-auto w-[min(calc(100%_-_2*clamp(1.25rem,5vw,5rem)),1240px)] flex min-h-[5.35rem] items-center justify-between gap-3 border-b border-[#ead9d3] max-[800px]:min-h-[4.6rem]">
         <Link href="/" className="inline-flex items-center gap-[.65rem] text-[1.05rem] leading-[1.1] font-[750] tracking-[-.035em] max-[540px]:gap-[.4rem] max-[540px]:text-[.94rem]" aria-label="Outdoor Reflections home">
           <span className="grid size-[2.45rem] flex-none place-items-center rounded-full bg-[#f4e2de] text-[var(--landing-accent)] max-[540px]:size-8" aria-hidden="true">

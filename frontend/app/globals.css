@@ -125,6 +125,23 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@utility lokta-paper {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    background: url("/paper/lokta.webp") repeat 0 0 / 640px;
+    filter: grayscale(1) brightness(.875) contrast(1.8);
+    mix-blend-mode: multiply;
+    opacity: .72;
+    content: "";
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

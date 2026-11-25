@@ -21,7 +21,7 @@ export default function RootLayout({
       lang="en"
       className="h-full font-sans antialiased"
     >
-      <body className="min-h-full flex flex-col bg-[#F9F7F3]">
+      <body className="lokta-paper flex min-h-full flex-col bg-[#F9F7F3]">
       <Analytics />
       <SpeedInsights />
         <Providers>
