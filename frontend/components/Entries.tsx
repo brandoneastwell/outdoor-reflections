@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import {useRouter} from "next/navigation";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
+import DeleteReflectionDialog from "@/components/DeleteReflectionDialog";
 import DrawIcon from "@/components/DrawIcon";
 import {SVG_PATHS} from "@/constants/svgPaths";
 import {useAuth} from "@/lib/context/auth";
@@ -16,6 +17,8 @@ export default function Entries() {
     const [entries, setEntries] = useState<Entry[]>([]);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
+    const [pendingDeletion, setPendingDeletion] = useState<Entry>();
+    const deleteTrigger = useRef<HTMLElement | null>(null);
     const [deleteMessage, setDeleteMessage] = useState("");
     const [hideEmpty, setHideEmpty] = useState(false);
     const [sortField, setSortField] = useState<EntrySortField>("lastEditedAt");
@@ -53,9 +56,6 @@ export default function Entries() {
 
     async function deleteEntry(entry: Entry) {
         if (deleting || entry.userId !== (userId ?? undefined)) return;
-        const title = entry.title.trim() || "Untitled reflection";
-        if (!window.confirm(`Delete “${title}”? This permanently removes the reflection.`)) return;
-
         setDeleting(true);
         setDeleteMessage("");
         try {
@@ -186,9 +186,9 @@ export default function Entries() {
                                 className="absolute top-full right-0 cursor-pointer rounded-lg border border-[#ead9d3] bg-[#fffaf2] px-3 py-2 text-sm font-semibold whitespace-nowrap text-[#9b3c48] shadow-md hover:bg-[#f4e2de] focus-visible:outline-2 focus-visible:outline-[#a23743] disabled:cursor-wait"
                                 onClick={(event) => {
                                     const menu = event.currentTarget.closest("details");
+                                    deleteTrigger.current = menu?.querySelector("summary") ?? null;
                                     menu?.removeAttribute("open");
-                                    menu?.querySelector("summary")?.focus();
-                                    void deleteEntry(entry);
+                                    setPendingDeletion(entry);
                                 }}
                             >
                                 Delete reflection
@@ -197,6 +197,12 @@ export default function Entries() {
                     </article>
                 ))}
             </div>
+            <DeleteReflectionDialog
+                title={pendingDeletion ? pendingDeletion.title.trim() || "Untitled reflection" : undefined}
+                onCancel={() => setPendingDeletion(undefined)}
+                onConfirm={() => { if (pendingDeletion) void deleteEntry(pendingDeletion); }}
+                onRestoreFocus={() => deleteTrigger.current?.focus()}
+            />
         </main>
     );
 }

@@ -1,4 +1,4 @@
-import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import type {Entry} from "@/types/entryTypes";
 import Entries from "./Entries";
@@ -44,6 +44,7 @@ async function chooseDelete() {
     const actions = await screen.findByLabelText("Actions for After the rain");
     fireEvent.click(actions);
     fireEvent.click(screen.getByRole("button", {name: "Delete reflection"}));
+    return await screen.findByRole("alertdialog", {name: "Delete reflection?"});
 }
 
 describe("reflection deletion", () => {
@@ -52,7 +53,6 @@ describe("reflection deletion", () => {
         mocks.userId = 42;
         mocks.getAll.mockResolvedValue([entry]);
         mocks.saveToLocalDB.mockResolvedValue(entry.id);
-        vi.spyOn(window, "confirm").mockReturnValue(true);
         vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(true);
     });
 
@@ -62,12 +62,15 @@ describe("reflection deletion", () => {
     });
 
     it("keeps the reflection when confirmation is cancelled", async () => {
-        vi.mocked(window.confirm).mockReturnValue(false);
         render(<Entries />);
 
-        await chooseDelete();
-
-        expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining(entry.title));
+        const dialog = await chooseDelete();
+        expect(dialog).toHaveAccessibleDescription("“After the rain” will be permanently removed.");
+        const cancel = within(dialog).getByRole("button", {name: "Cancel"});
+        expect(cancel).toHaveFocus();
+        fireEvent.click(cancel);
+        await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.getByLabelText("Actions for After the rain")).toHaveFocus());
         expect(screen.getByRole("link", {name: /After the rain/})).toBeInTheDocument();
         expect(mocks.saveToLocalDB).not.toHaveBeenCalled();
         expect(mocks.syncPendingEntries).not.toHaveBeenCalled();
@@ -79,7 +82,10 @@ describe("reflection deletion", () => {
         });
         render(<Entries />);
 
-        await chooseDelete();
+        const dialog = await chooseDelete();
+        expect(mocks.saveToLocalDB).not.toHaveBeenCalled();
+        expect(mocks.syncPendingEntries).not.toHaveBeenCalled();
+        fireEvent.click(within(dialog).getByRole("button", {name: "Delete reflection"}));
 
         await waitFor(() => expect(mocks.syncPendingEntries).toHaveBeenCalledOnce());
         expect(mocks.saveToLocalDB).toHaveBeenCalledBefore(mocks.syncPendingEntries);
@@ -96,7 +102,8 @@ describe("reflection deletion", () => {
         const online = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
         render(<><SyncManager /><Entries /></>);
 
-        await chooseDelete();
+        const dialog = await chooseDelete();
+        fireEvent.click(within(dialog).getByRole("button", {name: "Delete reflection"}));
 
         expect(await screen.findByText("Deletion will sync when you reconnect.")).toBeInTheDocument();
         expect(mocks.saveToLocalDB).toHaveBeenCalledWith(expect.objectContaining({
