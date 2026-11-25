@@ -17,10 +17,10 @@ export function normalizeEntry(entry: Entry | (Omit<Entry, "content"> & { conten
     };
 }
 
-export function sortEntriesByLastUpdated(entries: Entry[])  {
-    return entries.sort((a,b) => {
-        return new Date(b.lastEditedAt).getTime() - new Date(a.lastEditedAt).getTime()
-    })
+export type EntrySortField = "lastEditedAt" | "createdAt" | "date";
+
+export function sortEntriesByDate(entries: Entry[], field: EntrySortField) {
+    return entries.sort((first, second) => new Date(second[field]).getTime() - new Date(first[field]).getTime());
 }
 
 export async function isEntryEmpty(id: string) {
