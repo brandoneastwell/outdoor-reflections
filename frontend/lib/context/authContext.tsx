@@ -8,7 +8,7 @@ import {User} from "@/types/userTypes";
 import type {Providers} from "@/types/authTypes";
 import {SyncResponse} from "@/types/entryTypes";
 import Database from "@/lib/database";
-import {lockJournal} from "@/lib/vault/session";
+import {lockJournalEverywhere} from "@/lib/vault/session";
 import {fetchAccountSettings, type AccountSettings} from "@/lib/api/accountSettings";
 import {z} from "zod";
 
@@ -44,10 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const settingsRequest = useRef(0);
     const accountSettings = settings && settings.accountId === userId ? settings.value : null;
 
-    function setUserId(id: number | null) {
+    function setUserId(id: number | null, lockOnChange = true) {
         try {
             const previous = Number(localStorage.getItem(lastAccountKey));
-            if (previous > 0 && previous !== id) lockJournal();
+            if (lockOnChange && previous > 0 && previous !== id) void lockJournalEverywhere().catch(() => {});
             if (id === null) localStorage.removeItem(lastAccountKey);
             else localStorage.setItem(lastAccountKey, String(id));
         } catch {
@@ -164,13 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     async function logout() {
-        await fetch(`${API_URL}/auth/logout`, {
-            method: "POST",
-            credentials: "include",
-        });
-
-        lockJournal();
-        setUserId(null);
+        await Promise.all([
+            lockJournalEverywhere().catch(() => {}),
+            fetch(`${API_URL}/auth/logout`, {method: "POST", credentials: "include"}),
+        ]);
+        setUserId(null, false);
         router.push("/auth");
     }
 

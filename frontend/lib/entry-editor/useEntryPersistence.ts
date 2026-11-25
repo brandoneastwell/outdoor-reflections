@@ -4,6 +4,7 @@ import {useAuth} from "@/lib/context/auth";
 import type {Entry, SyncStatus} from "@/types/entryTypes";
 import type {StateSetter} from "@/utils/entryContext";
 import {isEntryBlank} from "./isEntryBlank";
+import {onBeforeJournalLock} from "@/lib/vault/session";
 
 const db = new Database();
 
@@ -33,7 +34,10 @@ export function useEntryPersistence(entry: Entry, setEntry: StateSetter<Entry>) 
 
         if (isEntryBlank(latestEntryRef.current)) return;
 
-        const saveTimeout = setTimeout(async () => {
+        let savePending = true;
+        const saveLocal = async () => {
+            if (!savePending) return;
+            savePending = false;
             const entryToSave: Entry = {...latestEntryRef.current, syncStatus: "pending", lastEditedAt: new Date().toISOString()};
             if (await db.saveToLocalDB(entryToSave, "reflections") === undefined) {
                 setSyncStatus("failed");
@@ -41,7 +45,9 @@ export function useEntryPersistence(entry: Entry, setEntry: StateSetter<Entry>) 
             }
             setEntry((previous: Entry) => ({...previous, syncStatus: "pending", lastEditedAt: entryToSave.lastEditedAt}));
             setSyncStatus("pending");
-        }, 1000);
+        };
+        const saveTimeout = setTimeout(saveLocal, 1000);
+        const stopFlushing = onBeforeJournalLock(() => { void saveLocal(); });
 
         const syncTimeout = setTimeout(async () => {
             if (latestEntryRef.current.syncStatus === "synced") return;
@@ -76,6 +82,7 @@ export function useEntryPersistence(entry: Entry, setEntry: StateSetter<Entry>) 
         }, 15000);
 
         return () => {
+            stopFlushing();
             clearTimeout(saveTimeout);
             clearTimeout(syncTimeout);
         };

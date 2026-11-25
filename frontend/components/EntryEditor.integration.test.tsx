@@ -1,6 +1,8 @@
+import {webcrypto} from "node:crypto";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import type {Entry} from "@/types/entryTypes";
+import {getVaultGeneration, lockJournal, unlockJournal} from "@/lib/vault/session";
 import EntryEditor from "./EntryEditor";
 
 const databaseMocks = vi.hoisted(() => ({
@@ -142,6 +144,25 @@ describe("EntryEditor integration", () => {
         await flushPromises();
         expect(consent.read).toHaveBeenCalledOnce();
         expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("starts saving a pending edit before locking the journal", async () => {
+        vi.stubGlobal("crypto", webcrypto);
+        const key = await crypto.subtle.generateKey({name: "AES-GCM", length: 256}, false, ["encrypt", "decrypt"]);
+        unlockJournal(key, getVaultGeneration());
+        try {
+            render(<EntryEditor initEntry={makeEntry({content: ["First draft"]})} />);
+            await flushPromises();
+            fireEvent.change(screen.getByPlaceholderText("How was your day?"), {target: {value: "Updated draft"}});
+            expect(databaseMocks.saveToLocalDB).not.toHaveBeenCalled();
+            await act(async () => lockJournal());
+            expect(databaseMocks.saveToLocalDB).toHaveBeenCalledWith(
+                expect.objectContaining({content: ["Updated draft"], syncStatus: "pending"}),
+                "reflections",
+            );
+        } finally {
+            lockJournal();
+        }
     });
 
     it("saves an edit to a synced entry locally before syncing it after 15 seconds", async () => {

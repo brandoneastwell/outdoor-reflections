@@ -3,6 +3,7 @@
 import {Dialog} from "radix-ui";
 import {useEffect, useState} from "react";
 import {useAuth} from "@/lib/context/auth";
+import {lockJournalEverywhere} from "@/lib/vault/session";
 
 export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocus}: {
     open: boolean;
@@ -13,6 +14,8 @@ export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocu
     const [section, setSection] = useState<"Privacy" | "Recovery">("Privacy");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const [locking, setLocking] = useState(false);
+    const [lockError, setLockError] = useState("");
 
     useEffect(() => {
         if (!open) return;
@@ -30,6 +33,19 @@ export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocu
             setError("The account setting was not saved. Reconnect and try again.");
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function lockJournal() {
+        setLocking(true);
+        setLockError("");
+        try {
+            await lockJournalEverywhere();
+            onOpenChange(false);
+        } catch {
+            setLockError("Could not clear remembered browser access. Try again.");
+        } finally {
+            setLocking(false);
         }
     }
 
@@ -72,6 +88,14 @@ export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocu
                             </>}
                         </section>
                     </div>
+                    <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-rose/15 px-4 py-3 text-sm">
+                        <button type="button" onClick={() => void lockJournal()} disabled={locking}
+                            className="cursor-pointer rounded-lg border border-rose/30 px-3 py-2 text-[#9b3c48] hover:bg-rose/10 disabled:opacity-60">
+                            Lock journal
+                        </button>
+                        <p className="text-xs text-[#654d50]">Locks all tabs and clears remembered access on this browser.</p>
+                        {lockError && <p role="alert" className="text-[#9b3c48]">{lockError}</p>}
+                    </footer>
                 </Dialog.Content>
             </Dialog.Portal>
         </Dialog.Root>

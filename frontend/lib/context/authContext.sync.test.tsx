@@ -5,7 +5,7 @@ import {afterEach, expect, it, vi} from "vitest";
 import Database from "@/lib/database";
 import type {Entry} from "@/types/entryTypes";
 import {useAuth} from "./auth";
-import {getVaultGeneration, lockJournal, unlockJournal} from "@/lib/vault/session";
+import {getVaultGeneration, journalLockSignal, lockJournal, requireJournalKey, unlockJournal} from "@/lib/vault/session";
 import {AuthProvider} from "./authContext";
 
 vi.mock("next/navigation", () => ({useRouter: () => ({push: vi.fn()})}));
@@ -15,6 +15,29 @@ afterEach(() => {
     lockJournal();
     localStorage.clear();
     vi.unstubAllGlobals();
+});
+
+it("locks the vault and publishes a lock for other tabs before logout finishes", async () => {
+    vi.stubGlobal("indexedDB", new IDBFactory());
+    vi.stubGlobal("crypto", webcrypto);
+    const key = await crypto.subtle.generateKey({name: "AES-GCM", length: 256}, false, ["encrypt", "decrypt"]);
+    unlockJournal(key, getVaultGeneration());
+    const {promise, resolve} = Promise.withResolvers<Response>();
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+        if (String(url).endsWith("/auth/me")) return Response.json({id: 42, email: "test@example.com"});
+        if (String(url).endsWith("/auth/logout")) return promise;
+        return Response.json({cloudAiEnabled: false});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const {result} = renderHook(useAuth, {wrapper: AuthProvider});
+    await waitFor(() => expect(result.current.userId).toBe(42));
+
+    const logout = result.current.logout();
+    expect(() => requireJournalKey()).toThrow("Unlock");
+    expect(localStorage.getItem(journalLockSignal)).toBeTruthy();
+    resolve(Response.json({}));
+    await logout;
+    await waitFor(() => expect(result.current.userId).toBeNull());
 });
 
 it("keeps a local deletion pending when an older sync response arrives", async () => {
