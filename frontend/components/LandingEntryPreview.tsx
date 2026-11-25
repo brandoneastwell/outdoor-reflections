@@ -22,6 +22,11 @@ export default function LandingEntryPreview() {
       />
       <div className="mx-auto w-full max-w-lg">
         <div className="overflow-hidden rounded-[.9rem] border border-[#fff8ee] bg-[#fffaf2] shadow-[0_1.4rem_3.2rem_#38221e66]">
+          <div aria-hidden="true" className="flex h-8 items-center gap-1.5 border-b border-[#eedbd3] bg-[#f5ece5] px-3">
+            <span className="size-2.5 rounded-full bg-[#ec6259]/65" />
+            <span className="size-2.5 rounded-full bg-[#e9ad39]/65" />
+            <span className="size-2.5 rounded-full bg-[#55b86a]/65" />
+          </div>
           <header className="border-b border-[#eedbd3] px-4 pt-[1.05rem] pb-[.8rem] text-center">
             <h2 className="font-flower text-[length:clamp(1.5rem,3.1vw,2.65rem)] leading-[1.12] font-semibold">Where the light landed</h2>
           </header>
