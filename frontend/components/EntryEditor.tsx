@@ -44,10 +44,11 @@ export default function EntryEditor({ initEntry } : { initEntry: Entry }) {
             />
             <div className="flex flex-col grow w-full max-w-2xl h-full gap-2 px-3 pb-3 pt-2 rounded-2xl mt-4">
                 <EntryContext value={{entry, setEntry}}>
-                    <div className="flex flex-row justify-between text-lg md:text-3xl text-rose tracking-wider font-flower">
-                        <DatePicker />
-                    </div>
-                    <EntryEditorSurface>
+                    <EntryEditorSurface header={
+                        <div className="font-flower text-lg font-semibold tracking-wider text-[#9b3c48] md:text-3xl">
+                            <DatePicker />
+                        </div>
+                    }>
                         <DrawingArea focus={mode === "drawing"} />
                         <TextArea focus={mode === "text"} suggestions={suggestions} />
                     </EntryEditorSurface>

@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react";
-import type {ReactNode} from "react";
+import type {CSSProperties, ReactNode} from "react";
 
-export default function EntryEditorSurface({children}: {children: ReactNode}) {
+export default function EntryEditorSurface({header, children}: {header: ReactNode; children: ReactNode}) {
     const [editorScale, setEditorScale] = useState(1);
     const editorAreaRef = useRef<HTMLDivElement | null>(null);
 
@@ -14,8 +14,8 @@ export default function EntryEditorSurface({children}: {children: ReactNode}) {
             if (rect.width === 0 || rect.height === 0) return;
 
             const horizontalPadding = 24;
-            const availableWidth = Math.max(320, rect.width - horizontalPadding);
-            setEditorScale(Math.max(1, availableWidth / 320));
+            const availableWidth = Math.min(rect.width, Math.max(320, rect.width - horizontalPadding));
+            setEditorScale(availableWidth / 320);
         };
 
         updateScale();
@@ -29,16 +29,20 @@ export default function EntryEditorSurface({children}: {children: ReactNode}) {
     }, []);
 
     return (
-        <div ref={editorAreaRef} className={"relative w-full h-full min-w-[320px] overflow-hidden flex flex-col flex-1 rounded-2xl"}>
-            <div
-                style={{
-                    width: "320px",
-                    height: "920px",
-                    zoom: editorScale,
-                }}
-                className="relative flex overflow-hidden"
-            >
-                {children}
+        <div
+            ref={editorAreaRef}
+            className="flex min-w-0 flex-1 flex-col items-center [--entry-gutter:1.75rem]"
+            style={{"--entry-scale": editorScale} as CSSProperties}
+        >
+            <div className="flex h-full min-h-0 w-[calc(320px*var(--entry-scale))] max-w-full flex-col gap-2">
+                <div className="px-[calc(var(--entry-gutter)*var(--entry-scale))]">
+                    {header}
+                </div>
+                <div className="relative flex flex-1 overflow-hidden rounded-2xl">
+                    <div className="relative h-[920px] w-[320px] shrink-0" style={{zoom: editorScale}}>
+                        {children}
+                    </div>
+                </div>
             </div>
         </div>
     );

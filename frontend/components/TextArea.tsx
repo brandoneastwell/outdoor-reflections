@@ -123,7 +123,7 @@ export default function TextArea({focus, suggestions}: TextAreaProps) {
 
     return (
         <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="absolute inset-0 h-full w-full">
+            <div className="absolute inset-y-0 inset-x-[var(--entry-gutter)]">
                 {content.map((line, index) => (
                         <TextAreaItem
                             key={line.id}
@@ -162,8 +162,8 @@ export default function TextArea({focus, suggestions}: TextAreaProps) {
             {isMounted && createPortal(
                 <DragOverlay className="pointer-events-none z-[100]" dropAnimation={null}>
                     {activeLine && (
-                        <div className="h-full w-full overflow-hidden rounded-md border border-rose/30 bg-white px-2 shadow-lg">
-                            <div className="whitespace-pre-wrap pl-5 font-mono text-base leading-6.75 text-black">
+                        <div className="h-full w-full overflow-hidden rounded-md bg-white shadow-lg ring-1 ring-rose/30 ring-inset">
+                            <div className="whitespace-pre-wrap font-mono text-base leading-6.75 text-black">
                                 {activeLine.text || "How was your day?"}
                             </div>
                         </div>

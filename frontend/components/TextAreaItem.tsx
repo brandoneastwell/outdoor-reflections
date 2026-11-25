@@ -1,7 +1,8 @@
 "use client"
 
 import {useSortable} from "@dnd-kit/react/sortable";
-import React from "react";
+import React, {useId, useState} from "react";
+import {AnimatedSuggestionText, SuggestionTabCallout} from "./InlineSuggestionEffects";
 import {TextBox} from "@/types/customTypes";
 
 interface TextAreaItemProps {
@@ -35,6 +36,8 @@ export default function TextAreaItem({
     onAcceptAutocomplete = () => {},
     onDismissSuggestion = () => {},
 }: TextAreaItemProps) {
+    const suggestionHintId = useId();
+    const [tabAccepted, setTabAccepted] = useState(false);
     const {ref, handleRef, isDragging, isDropTarget} = useSortable({
         id: line.id,
         index,
@@ -58,6 +61,7 @@ export default function TextAreaItem({
 
         if (autocomplete && event.key === "Tab") {
             event.preventDefault();
+            setTabAccepted(true);
             onAcceptAutocomplete(autocomplete);
             return;
         }
@@ -75,12 +79,12 @@ export default function TextAreaItem({
         <div
             ref={ref}
             className={
-                "relative w-full h-auto rounded-md border px-2 mb-1 overflow-hidden transition-colors " +
+                "relative mb-1 h-auto w-full rounded-md transition-colors " +
                 (isDragging
-                    ? "border-rose/20 bg-rose/10 opacity-60"
+                    ? "bg-rose/10 opacity-60 ring-1 ring-rose/20 ring-inset"
                     : isDropTarget
-                        ? "border-rose/30 bg-rose/5"
-                        : "border-transparent")
+                        ? "bg-rose/5 ring-1 ring-rose/30 ring-inset"
+                        : "")
             }
         >
             <button
@@ -92,7 +96,7 @@ export default function TextAreaItem({
                 disabled={!focus}
                 onFocus={onFocus}
                 className={
-                    "absolute left-1 top-1.5 z-10 flex h-5 w-5 touch-none items-center justify-center rounded text-rose/60 cursor-grab transition-opacity hover:bg-rose/10 hover:text-rose active:cursor-grabbing disabled:pointer-events-none " +
+                    "absolute right-full top-1 mr-1 z-10 flex h-5 w-5 touch-none items-center justify-center rounded text-rose/60 cursor-grab transition-opacity hover:bg-rose/10 hover:text-rose active:cursor-grabbing disabled:pointer-events-none " +
                     (showDragHandle ? "opacity-100" : "pointer-events-none opacity-0")
                 }
             >
@@ -102,23 +106,27 @@ export default function TextAreaItem({
                 {autocomplete && (
                     <div
                         aria-hidden="true"
-                        className="invisible w-full whitespace-pre-wrap break-words pl-5 font-mono text-base leading-6.75"
+                        className="invisible w-full whitespace-pre-wrap break-words font-mono text-base leading-6.75"
                     >
                         {line.text}{autocompleteSeparator}{autocomplete}
                     </div>
                 )}
                 <textarea
                     name="content"
+                    aria-describedby={autocomplete ? suggestionHintId : undefined}
                     className={
                         "resize-none field-sizing-content bg-transparent font-mono outline-none outline-0 text-black " +
-                        "text-base leading-6.75 w-full overflow-hidden pl-5 " +
+                        "text-base leading-6.75 w-full overflow-hidden " +
                         (autocomplete ? "absolute inset-0 h-full " : "h-auto ") +
                         (sentenceStarter ? "placeholder:text-black/50 " : "placeholder:text-black ") +
                         (focus ? "" : " pointer-events-none")
                     }
                     value={line.text}
                     onKeyDown={handleKeyDown}
-                    onChange={(e) => onChange(line.id, e.target.value)}
+                    onChange={(e) => {
+                        setTabAccepted(false);
+                        onChange(line.id, e.target.value);
+                    }}
                     onFocus={onFocus}
                     onBlur={onBlur}
                     placeholder={sentenceStarter ?? "How was your day?"}
@@ -129,13 +137,27 @@ export default function TextAreaItem({
                     <div
                         aria-hidden="true"
                         data-testid="inline-completion-ghost"
-                        className="pointer-events-none absolute inset-0 z-[1] w-full whitespace-pre-wrap break-words pl-5 font-mono text-base leading-6.75 text-black"
+                        className="pointer-events-none absolute inset-0 z-[1] w-full whitespace-pre-wrap break-words font-mono text-base leading-6.75 text-black"
                     >
                         <span className="invisible">{line.text}{autocompleteSeparator}</span>
-                        <span className="text-black/50">{autocomplete}</span>
+                        <AnimatedSuggestionText key={autocomplete} text={autocomplete} state="visible" />
                     </div>
                 )}
             </div>
+            {(autocomplete || tabAccepted) && (
+                <div
+                    id={suggestionHintId}
+                    aria-hidden={tabAccepted || undefined}
+                    className="pointer-events-none flex pt-0.5 pb-0.5"
+                >
+                    <SuggestionTabCallout
+                        className="relative rounded-sm px-[.22rem] py-[.06rem] text-[.5rem] before:left-[.35rem] before:border-[.15rem] [&_kbd]:mr-0.5"
+                        state={tabAccepted ? "accepted" : "visible"}
+                        tabPressed={tabAccepted}
+                        onAcceptedAnimationComplete={() => setTabAccepted(false)}
+                    />
+                </div>
+            )}
         </div>
     );
 }

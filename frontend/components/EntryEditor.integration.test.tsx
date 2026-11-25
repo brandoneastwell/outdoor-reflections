@@ -296,9 +296,16 @@ describe("EntryEditor integration", () => {
         expect(textBlock.value).toBe("Existing thought continued");
         expect(screen.getByTestId("inline-completion-ghost"))
             .toHaveTextContent("Existing thought continued beneath the trees");
+        expect(textBlock).toHaveAccessibleDescription("Tab to accept AI suggestion");
+
+        await act(async () => vi.advanceTimersByTimeAsync(4_000));
+        expect(textBlock.value).toBe("Existing thought continued");
+        expect(screen.getByTestId("inline-completion-ghost")).toBeInTheDocument();
+
         fireEvent.keyDown(textBlock, {key: "Tab"});
         expect(textBlock.value).toBe("Existing thought continued beneath the trees");
         expect(screen.queryByTestId("inline-completion-ghost")).not.toBeInTheDocument();
+        expect(textBlock).not.toHaveAccessibleDescription();
     });
 
     it("ignores an inline response after the user types again", async () => {
