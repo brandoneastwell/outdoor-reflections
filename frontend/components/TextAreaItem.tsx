@@ -48,25 +48,27 @@ export default function TextAreaItem({
         },
     });
     const showDragHandle = selected || isDragging;
+    const activeStarter = focus && line.text.trim() === "" ? sentenceStarter : undefined;
+    const activeAutocomplete = focus ? autocomplete : undefined;
+    const suggestion = activeStarter || activeAutocomplete;
     const autocompleteSeparator = autocomplete && line.text &&
         !line.text.endsWith(" ") && !autocomplete.startsWith(" ")
         ? " "
         : "";
+    const suggestionPrefix = activeStarter ? "" : line.text + autocompleteSeparator;
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (sentenceStarter && line.text.length === 0 && event.key === "Tab") {
-            event.preventDefault();
-            onAcceptSentenceStarter(sentenceStarter);
-            return;
-        }
-
-        if (autocomplete && event.key === "Tab") {
+        if (suggestion && event.key === "Tab") {
             event.preventDefault();
             setTabAccepted(true);
-            onAcceptAutocomplete(autocomplete);
+            if (activeStarter) {
+                onAcceptSentenceStarter(activeStarter);
+            } else {
+                onAcceptAutocomplete(suggestion);
+            }
             return;
         }
 
-        if (autocomplete && event.key === "Escape") {
+        if (suggestion && event.key === "Escape") {
             event.preventDefault();
             onDismissSuggestion();
             return;
@@ -103,22 +105,22 @@ export default function TextAreaItem({
                 <span aria-hidden="true">⠿</span>
             </button>
             <div className="relative w-full">
-                {autocomplete && (
+                {suggestion && (
                     <div
                         aria-hidden="true"
                         className="invisible w-full whitespace-pre-wrap break-words font-mono text-base leading-6.75"
                     >
-                        {line.text}{autocompleteSeparator}{autocomplete}
+                        {suggestionPrefix}{suggestion}
                     </div>
                 )}
                 <textarea
                     name="content"
-                    aria-describedby={autocomplete ? suggestionHintId : undefined}
+                    aria-describedby={suggestion ? suggestionHintId : undefined}
                     className={
                         "resize-none field-sizing-content bg-transparent font-mono outline-none outline-0 text-black " +
                         "text-base leading-6.75 w-full overflow-hidden " +
-                        (autocomplete ? "absolute inset-0 h-full " : "h-auto ") +
-                        (sentenceStarter ? "placeholder:text-black/50 " : "placeholder:text-black ") +
+                        (suggestion ? "absolute inset-0 h-full " : "h-auto ") +
+                        (activeStarter ? "placeholder:text-transparent " : "placeholder:text-black ") +
                         (focus ? "" : " pointer-events-none")
                     }
                     value={line.text}
@@ -129,22 +131,22 @@ export default function TextAreaItem({
                     }}
                     onFocus={onFocus}
                     onBlur={onBlur}
-                    placeholder={sentenceStarter ?? "How was your day?"}
+                    placeholder={(focus ? sentenceStarter : undefined) ?? "How was your day?"}
                     disabled={!focus}
                     spellCheck={false}
                 />
-                {autocomplete && (
+                {suggestion && (
                     <div
                         aria-hidden="true"
-                        data-testid="inline-completion-ghost"
+                        data-testid={activeStarter ? "sentence-starter-ghost" : "inline-completion-ghost"}
                         className="pointer-events-none absolute inset-0 z-[1] w-full whitespace-pre-wrap break-words font-mono text-base leading-6.75 text-black"
                     >
-                        <span className="invisible">{line.text}{autocompleteSeparator}</span>
-                        <AnimatedSuggestionText key={autocomplete} text={autocomplete} state="visible" />
+                        <span className="invisible">{suggestionPrefix}</span>
+                        <AnimatedSuggestionText key={suggestion} text={suggestion} state="visible" />
                     </div>
                 )}
             </div>
-            {(autocomplete || tabAccepted) && (
+            {(suggestion || tabAccepted) && (
                 <div
                     id={suggestionHintId}
                     aria-hidden={tabAccepted || undefined}

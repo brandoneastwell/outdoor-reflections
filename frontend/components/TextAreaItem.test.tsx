@@ -55,7 +55,9 @@ describe("TextAreaItem", () => {
         const textBlock = screen.getByRole("textbox");
         expect(textBlock).toHaveValue("");
         expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
-        expect(textBlock).toHaveClass("placeholder:text-black/50");
+        expect(textBlock).toHaveClass("placeholder:text-transparent");
+        expect(screen.getByTestId("sentence-starter-ghost")).toHaveTextContent("I noticed...");
+        expect(textBlock).toHaveAccessibleDescription("Tab to accept AI suggestion");
         expect(onAcceptSentenceStarter).not.toHaveBeenCalled();
         textBlock.focus();
         expect(textBlock).toHaveFocus();

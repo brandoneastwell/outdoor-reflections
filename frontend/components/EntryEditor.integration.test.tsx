@@ -175,13 +175,19 @@ describe("EntryEditor integration", () => {
 
         expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
         expect(textBlock).toHaveValue("");
+        expect(screen.getByTestId("sentence-starter-ghost")).toHaveTextContent("I noticed...");
+        expect(textBlock).toHaveAccessibleDescription("Tab to accept AI suggestion");
         fireEvent.focus(textBlock);
         fireEvent.keyDown(textBlock, {key: "Tab"});
         expect(textBlock.value).toBe("I noticed...");
+        expect(screen.queryByTestId("sentence-starter-ghost")).not.toBeInTheDocument();
 
         fireEvent.change(textBlock, {target: {value: ""}});
         expect(textBlock).toHaveValue("");
         expect(textBlock).toHaveAttribute("placeholder", "I noticed...");
+        fireEvent.keyDown(textBlock, {key: "Escape"});
+        expect(screen.queryByTestId("sentence-starter-ghost")).not.toBeInTheDocument();
+        expect(textBlock).toHaveAttribute("placeholder", "How was your day?");
     });
 
     it("shows sentence starters only for the first empty block", async () => {

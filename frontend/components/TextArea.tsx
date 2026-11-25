@@ -155,7 +155,12 @@ export default function TextArea({focus, suggestions}: TextAreaProps) {
                                 acceptSuggestion(line.id, suggestion, false);
                             }}
                             onAcceptAutocomplete={(suggestion) => acceptSuggestion(line.id, suggestion, true)}
-                            onDismissSuggestion={clearAiSuggestions}
+                            onDismissSuggestion={() => {
+                                if (index === 0 && line.text.trim() === "") {
+                                    setCommittedSentenceStarter(undefined);
+                                }
+                                clearAiSuggestions();
+                            }}
                         />
                     ))}
             </div>
