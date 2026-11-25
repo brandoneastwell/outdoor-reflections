@@ -51,6 +51,7 @@ it("keeps a local deletion pending when an older sync response arrives", async (
     });
     const fetchMock = vi.fn<typeof fetch>()
         .mockResolvedValueOnce(Response.json({id: original.userId, email: "test@example.com"}))
+        .mockResolvedValueOnce(Response.json({cloudAiEnabled: false}))
         .mockReturnValueOnce(staleResponse);
     vi.stubGlobal("fetch", fetchMock);
 

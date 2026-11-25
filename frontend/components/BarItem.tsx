@@ -1,7 +1,7 @@
 "use client"
 
 import DrawIcon from "@/components/DrawIcon";
-import {AnimatePresence, motion} from "motion/react";
+import {motion} from "motion/react";
 
 interface SidebarItemProps {
     svgPaths: string[];
@@ -23,8 +23,8 @@ export default function BarItem({
     className = "flex aspect-square w-10 cursor-pointer flex-row items-center justify-center text-nowrap rounded-xl py-1 font-flower transition-colors hover:bg-white/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/30",
 }: SidebarItemProps) {
     return (
-        <motion.div aria-label={label} className={className} onClick={onClick} animate={{}}>
+        <motion.button type="button" aria-label={label} className={className} onClick={onClick} animate={{}}>
             <DrawIcon fill={fill} svgPaths={svgPaths} strokeWidth={strokeWidth} iconSize={iconSize} />
-        </motion.div>
+        </motion.button>
     );
 }

@@ -137,7 +137,9 @@ export default class Database {
                     if (acknowledgement.deletedAt) {
                         store.put({
                             ...existing,
-                            ...acknowledgement,
+                            revision: acknowledgement.revision,
+                            lastEditedAt: acknowledgement.lastEditedAt,
+                            deletedAt: acknowledgement.deletedAt,
                             syncStatus: "synced",
                             payload: null,
                         });

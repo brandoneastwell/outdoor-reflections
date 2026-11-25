@@ -27,8 +27,13 @@ vi.mock("../lib/database", () => ({
     },
 }));
 
+const consent = vi.hoisted(() => ({enabled: true, read: vi.fn()}));
+vi.mock("@/lib/api/accountSettings", () => ({fetchAccountSettings: consent.read}));
+
 vi.mock("@/lib/context/auth", () => ({
     useAuth: () => ({
+        userId: 42,
+        accountSettings: {cloudAiEnabled: consent.enabled},
         refresh: vi.fn(),
         syncPendingEntries,
     }),
@@ -57,6 +62,7 @@ vi.mock("@/components/SyncLoginPopup", () => ({default: () => null}));
 
 const makeEntry = (overrides: Partial<Entry> = {}): Entry => ({
     id: "current-entry",
+    userId: 42,
     title: "",
     content: [""],
     date: "2026-11-13T09:00:00.000Z",
@@ -90,6 +96,8 @@ async function flushPromises() {
 
 describe("EntryEditor integration", () => {
     beforeEach(() => {
+        consent.enabled = true;
+        consent.read.mockReset().mockResolvedValue({cloudAiEnabled: true});
         vi.useFakeTimers();
         vi.stubGlobal("ResizeObserver", class ResizeObserver {
             observe() {}
@@ -113,6 +121,27 @@ describe("EntryEditor integration", () => {
         vi.restoreAllMocks();
         vi.unstubAllGlobals();
         vi.useRealTimers();
+    });
+
+    it("keeps journal text off the network unless cloud AI consent is present and current", async () => {
+        consent.enabled = false;
+        const {unmount} = render(<EntryEditor initEntry={makeEntry()} />);
+        await flushPromises();
+        const block = screen.getByPlaceholderText("How was your day?");
+        fireEvent.focus(block);
+        fireEvent.change(block, {target: {value: "Private draft"}});
+        await act(async () => vi.advanceTimersByTimeAsync(10_000));
+        expect(databaseMocks.getAll).not.toHaveBeenCalled();
+        expect(consent.read).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+        unmount();
+
+        consent.enabled = true;
+        consent.read.mockResolvedValue({cloudAiEnabled: false});
+        render(<EntryEditor initEntry={makeEntry()} />);
+        await flushPromises();
+        expect(consent.read).toHaveBeenCalledOnce();
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("saves an edit to a synced entry locally before syncing it after 15 seconds", async () => {

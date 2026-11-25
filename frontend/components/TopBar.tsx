@@ -1,7 +1,8 @@
 "use client"
 
 import { SVG_PATHS } from "@/constants/svgPaths";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
+import AccountSettingsDialog from "./AccountSettingsDialog";
 import BarItem from "@/components/BarItem";
 import {isEntryEmpty} from "@/utils/entryUtils";
 import {usePathname, useRouter} from "next/navigation";
@@ -9,33 +10,20 @@ import {useJournalUnlocked} from "@/lib/vault/session";
 import {useAuth} from "@/lib/context/auth";
 import {AnimatePresence, motion} from "motion/react";
 
-type DropDownItem = {
-    text: string;
-    onClick: () => void | Promise<void>;
-};
-
 export default function TopBar() {
     const [dropDownOpen, setDropDownOpen] = useState<boolean>(false);
-    const [dropDownItems, setDropDownItems] = useState<DropDownItem[]>([])
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const topBar = useRef<HTMLDivElement>(null);
     const user = useAuth();
     const unlocked = useJournalUnlocked();
     const pathname = usePathname();
     const router = useRouter();
 
-    const profileDropDownItems = [
-        { text: "Logout", onClick: () => user.logout() }
-    ];
-
     useEffect(() => {
-        const handleClick = (e: MouseEvent) => {
-            if (e.target instanceof HTMLElement) {
-                if (e.target.closest(".dropdown") || e.target.closest(".dropdown-item")) return;
-                setDropDownOpen(false);
-            }
+        const handleClick = (event: MouseEvent) => {
+            if (event.target instanceof Node && !topBar.current?.contains(event.target)) setDropDownOpen(false);
         };
-
-        document.addEventListener("click", handleClick)
-
+        document.addEventListener("click", handleClick);
         return () => document.removeEventListener("click", handleClick);
     }, []);
 
@@ -43,7 +31,6 @@ export default function TopBar() {
         if (dropDownOpen) return setDropDownOpen(false);
         if (user.userId) {
             setDropDownOpen(true);
-            setDropDownItems(profileDropDownItems);
         }
         else router.push("/auth");
     }
@@ -63,13 +50,14 @@ export default function TopBar() {
     return (
         <div className={"w-full my-5 h-20 flex flex-row place-items-center justify-center items-center gap-1 text-lg"}>
             <motion.div
+                ref={topBar}
                 layout
                 transition={{ layout: { duration: 0.22, ease: "easeOut" } }}
                 className="fixed z-50 flex flex-col gap-1 overflow-hidden rounded-2xl border border-white/40 bg-rose/35 p-1 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10">
                 <div className="flex flex-row gap-1">
                     <BarItem
                         svgPaths={SVG_PATHS.userIcon}
-                        label="Login"
+                        label={user.userId ? "Account menu" : "Login"}
                         onClick={profileOnClick}
                     />
                     <BarItem
@@ -96,13 +84,23 @@ export default function TopBar() {
                         transition={{ duration: 0.18, ease: "easeOut" }}
                         className="dropdown z-50 min-w-28 overflow-hidden text-nowrap rounded-xl text-sm font-mono border border-white/20 bg-rose/5 p-1 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10"
                     >
-                        { dropDownItems.map((item, index) => (
-                            <div className="dropdown-item rounded-lg p-1 cursor-pointer hover:bg-white/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose/30" onClick={item.onClick} key={index + item.text}>{item.text}</div>
-                        )) }
+                        <button type="button" className="block w-full cursor-pointer rounded-lg p-2 text-left hover:bg-white/30" onClick={() => {
+                            setDropDownOpen(false);
+                            setSettingsOpen(true);
+                        }}>Settings</button>
+                        <button type="button" className="block w-full cursor-pointer rounded-lg p-2 text-left hover:bg-white/30" onClick={() => {
+                            setDropDownOpen(false);
+                            void user.logout();
+                        }}>Logout</button>
                     </motion.div>
                     }
                 </AnimatePresence>
             </motion.div>
+            <AccountSettingsDialog
+                open={settingsOpen && Boolean(user.userId)}
+                onOpenChange={setSettingsOpen}
+                onRestoreFocus={() => topBar.current?.querySelector<HTMLButtonElement>('[aria-label="Account menu"]')?.focus()}
+            />
         </div>
     )
 }

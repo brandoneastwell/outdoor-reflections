@@ -1,5 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import Database from "@/lib/database";
+import {fetchAccountSettings} from "@/lib/api/accountSettings";
+import {useAuth} from "@/lib/context/auth";
 import {reflectionsAiManager} from "@/lib/ai/reflectionsAiManager";
 import type {Entry} from "@/types/entryTypes";
 import type {EntryAiState} from "@/types/intelligenceTypes";
@@ -19,14 +21,16 @@ const logAiEligibility = (
 };
 
 export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
+    const {userId, accountSettings} = useAuth();
+    const cloudAiEnabled = entry.userId !== undefined && entry.userId === userId && accountSettings?.cloudAiEnabled === true;
     const [isOnline, setIsOnline] = useState(true);
     const [recentContent, setRecentContent] = useState<string[]>([]);
     const [focusedTextBlockIndex, setFocusedTextBlockIndex] = useState<number | null>(null);
     const [aiState, setAiState] = useState<EntryAiState>({
         autocomplete: undefined,
-        status: initiallyBlank ? "loading" : "idle",
+        status: initiallyBlank && cloudAiEnabled ? "loading" : "idle",
         sentence_starters: [],
-        targetBlockIndex: initiallyBlank ? 0 : null,
+        targetBlockIndex: initiallyBlank && cloudAiEnabled ? 0 : null,
         error: null,
     });
     const aiRequestRef = useRef<AbortController | null>(null);
@@ -60,6 +64,15 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
         });
     }, []);
 
+    useEffect(() => {
+        if (cloudAiEnabled) return;
+        if (autocompleteTimeoutRef.current) clearTimeout(autocompleteTimeoutRef.current);
+        autocompleteTimeoutRef.current = null;
+        initialSuggestionRequestedRef.current = false;
+        setRecentContent([]);
+        clearAiSuggestions();
+    }, [cloudAiEnabled, clearAiSuggestions]);
+
     const requestContentGeneration = useCallback(async (
         type: 'sentence_starter' | 'autocomplete',
         currentContent: string,
@@ -69,6 +82,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
     ): Promise<void> => {
         const requestChecks: Record<string, boolean> = {
             online: navigator.onLine,
+            cloudAiEnabled,
             hasMinimumContext: recentContent.length > 1,
         };
         if (type === "autocomplete") {
@@ -92,6 +106,13 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
         });
 
         try {
+            // Recheck the account preference before sending any readable journal data.
+            const settings = await fetchAccountSettings(requestController.signal);
+            if (requestController.signal.aborted || !navigator.onLine) return;
+            if (!settings.cloudAiEnabled) {
+                clearAiSuggestions();
+                return;
+            }
             if (type === "autocomplete") {
                 if (!currentTextBlock) return;
                 const completion = await reflectionsAiManager.getInlineCompletion(
@@ -154,7 +175,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
                 aiRequestTypeRef.current = null;
             }
         }
-    }, [entry.id, entry.userId]);
+    }, [entry.id, cloudAiEnabled, clearAiSuggestions]);
 
     useEffect(() => {
         const updateOnlineStatus = () => setIsOnline(navigator.onLine);
@@ -178,6 +199,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
     }, [clearAiSuggestions]);
 
     useEffect(() => {
+        if (!cloudAiEnabled) return;
         let cancelled = false;
 
         const loadRecentContent = async () => {
@@ -202,8 +224,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
                 if (previousContent.length <= 1 || !navigator.onLine) {
                     setAiState((currentState: EntryAiState) => ({...currentState, status: "idle"}));
                 }
-            } catch (error) {
-                console.warn("Unable to load previous entries for AI context", error);
+            } catch {
                 if (!cancelled) {
                     setRecentContent([]);
                     setAiState((currentState: EntryAiState) => ({...currentState, status: "idle"}));
@@ -215,11 +236,12 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
         return () => {
             cancelled = true;
         };
-    }, [entry.id, entry.userId]);
+    }, [entry.id, entry.userId, cloudAiEnabled]);
 
     useEffect(() => {
         const firstBlockExists = entry.content.length > 0;
         const eligible = logAiEligibility("sentence_starter", "initial", {
+            cloudAiEnabled,
             entryInitiallyBlank: wasInitiallyBlankRef.current,
             notAlreadyRequested: !initialSuggestionRequestedRef.current,
             firstBlockExists,
@@ -231,7 +253,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
 
         initialSuggestionRequestedRef.current = true;
         void requestContentGeneration("sentence_starter", "", recentContent, 0);
-    }, [entry.content, isOnline, recentContent, requestContentGeneration]);
+    }, [entry.content, isOnline, recentContent, requestContentGeneration, cloudAiEnabled]);
 
     const handleTextBlockFocus = useCallback((index: number) => {
         focusedTextBlockIndexRef.current = index;
@@ -275,6 +297,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
 
         const currentBlock = content[index]?.trim() ?? "";
         if (!logAiEligibility("autocomplete", "schedule", {
+            cloudAiEnabled,
             online: isOnline,
             hasMinimumContext: recentContent.length > 1,
             currentBlockNotEmpty: currentBlock.length > 0,
@@ -295,7 +318,7 @@ export function useEntryAiSuggestions(entry: Entry, initiallyBlank: boolean) {
                 currentBlock,
             );
         }, 10_000);
-    }, [clearAiSuggestions, isOnline, recentContent, requestContentGeneration]);
+    }, [clearAiSuggestions, isOnline, recentContent, requestContentGeneration, cloudAiEnabled]);
 
     return {
         aiState,

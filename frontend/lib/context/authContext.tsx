@@ -1,6 +1,6 @@
 "use client";
 
-import {createContext, ReactNode, useEffect, useState} from "react";
+import {createContext, ReactNode, useCallback, useEffect, useRef, useState} from "react";
 import {API_URL} from "@/constants/apiUrl";
 import {useRouter} from "next/navigation";
 import {readJsonError} from "@/lib/api/readResponse";
@@ -9,12 +9,23 @@ import type {Providers} from "@/types/authTypes";
 import {SyncResponse} from "@/types/entryTypes";
 import Database from "@/lib/database";
 import {lockJournal} from "@/lib/vault/session";
+import {fetchAccountSettings, type AccountSettings} from "@/lib/api/accountSettings";
+import {z} from "zod";
 
 const lastAccountKey = "outdoor-reflections.last-account";
+const syncAcknowledgements = z.array(z.object({
+    id: z.string(),
+    revision: z.string(),
+    lastEditedAt: z.iso.datetime(),
+    deletedAt: z.iso.datetime().nullish(),
+}));
 
 type AuthContextType = {
     userId: number | null;
     accountReady: boolean;
+    accountSettings: AccountSettings | null;
+    reloadAccountSettings: (signal?: AbortSignal) => void;
+    updateCloudAi: (enabled: boolean) => Promise<void>;
     setUserId: (userId: number | null) => void;
     logout: () => void;
     login: (credentials: User) => Promise<{ message: string, id: number }>;
@@ -29,10 +40,19 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [userId, setAccountId] = useState<number | null>(null);
     const [accountReady, setAccountReady] = useState(false);
+    const [settings, setSettings] = useState<{accountId: number; value: AccountSettings} | null>(null);
+    const settingsRequest = useRef(0);
+    const accountSettings = settings && settings.accountId === userId ? settings.value : null;
 
     function setUserId(id: number | null) {
-        if (id === null) localStorage.removeItem(lastAccountKey);
-        else localStorage.setItem(lastAccountKey, String(id));
+        try {
+            const previous = Number(localStorage.getItem(lastAccountKey));
+            if (previous > 0 && previous !== id) lockJournal();
+            if (id === null) localStorage.removeItem(lastAccountKey);
+            else localStorage.setItem(lastAccountKey, String(id));
+        } catch {
+            // Browser settings may prevent persistence of the offline account hint.
+        }
         setAccountId(id);
     }
     const router = useRouter();
@@ -41,10 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         async function loadUser() {
             try {
                 if (!navigator.onLine) throw new Error("Offline");
-                let res = await me()
+                const signal = AbortSignal.timeout(5_000);
+                let res = await me(signal);
 
                 if (res.status === 401) {
-                    const refreshRes = await refresh();
+                    const refreshRes = await refresh(signal);
                     if (!refreshRes.ok) {
                         if (refreshRes.status >= 500) throw new Error("Account service unavailable");
                         setUserId(null);
@@ -52,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     }
 
                     // Retry the original request after refreshing
-                    res = await me()
+                    res = await me(signal);
                 }
 
                 if (!res.ok) {
@@ -64,8 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const user: { id: number, email: string } = await res.json();
                 setUserId(user.id);
             } catch {
-                const cachedId = Number(localStorage.getItem(lastAccountKey));
-                if (Number.isSafeInteger(cachedId) && cachedId > 0) setAccountId(cachedId);
+                try {
+                    const cachedId = Number(localStorage.getItem(lastAccountKey));
+                    if (Number.isSafeInteger(cachedId) && cachedId > 0) setAccountId(cachedId);
+                } catch {
+                    // Without an offline account hint only local guest entries are available.
+                }
             } finally {
                 setAccountReady(true);
             }
@@ -75,16 +100,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     }, []);
 
-    async function me() {
+    const reloadAccountSettings = useCallback((signal?: AbortSignal) => {
+        if (!userId || !navigator.onLine) return;
+        const requestId = ++settingsRequest.current;
+        void fetchAccountSettings(signal).then(
+            (value) => {
+                if (!signal?.aborted && requestId === settingsRequest.current) setSettings({accountId: userId, value});
+            },
+            () => {
+                if (!signal?.aborted && requestId === settingsRequest.current) setSettings(null);
+            },
+        );
+    }, [userId]);
+
+    useEffect(() => {
+        const request = new AbortController();
+        const loadSettings = () => reloadAccountSettings(request.signal);
+        loadSettings();
+        window.addEventListener("online", loadSettings);
+        return () => {
+            request.abort();
+            window.removeEventListener("online", loadSettings);
+        };
+    }, [reloadAccountSettings]);
+
+    async function updateCloudAi(enabled: boolean) {
+        if (!userId) throw new Error("Sign in to change account settings.");
+        const requestId = ++settingsRequest.current;
+        if (!enabled) setSettings({accountId: userId, value: {cloudAiEnabled: false}});
+        const value = await fetchAccountSettings(undefined, {cloudAiEnabled: enabled});
+        if (requestId === settingsRequest.current) setSettings({accountId: userId, value});
+    }
+
+    async function me(signal: AbortSignal) {
         return await fetch(`${API_URL}/auth/me`, {
             credentials: "include",
+            signal,
         });
     }
 
-    async function refresh() {
+    async function refresh(signal?: AbortSignal) {
         return fetch(`${API_URL}/auth/refresh`, {
             method: "POST",
             credentials: "include",
+            signal,
         });
     }
 
@@ -161,12 +220,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const results: SyncResponse = await res.json()
-        const synced_entries = await db.applySyncAcknowledgements(authenticatedUserId, results.synced_entries);
+        const synced_entries = await db.applySyncAcknowledgements(
+            authenticatedUserId,
+            syncAcknowledgements.parse(results.synced_entries),
+        );
         return {...results, synced_entries};
     }
 
     return (
-        <AuthContext.Provider value={{ userId, accountReady, setUserId, logout, login, refresh, loginWithProvider, createAccount, syncPendingEntries }}>
+        <AuthContext.Provider value={{ userId, accountReady, accountSettings, reloadAccountSettings, updateCloudAi, setUserId, logout, login, refresh, loginWithProvider, createAccount, syncPendingEntries }}>
             {children}
         </AuthContext.Provider>
     );

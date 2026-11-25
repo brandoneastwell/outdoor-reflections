@@ -29,8 +29,13 @@ vi.mock("../lib/database", () => ({
     },
 }));
 
+const consent = vi.hoisted(() => ({enabled: true, read: vi.fn()}));
+vi.mock("@/lib/api/accountSettings", () => ({fetchAccountSettings: consent.read}));
+
 vi.mock("@/lib/context/auth", () => ({
     useAuth: () => ({
+        userId: 42,
+        accountSettings: {cloudAiEnabled: consent.enabled},
         refresh: vi.fn(),
         syncPendingEntries: vi.fn(),
     }),
@@ -89,6 +94,7 @@ const suggestions = [
 
 const makeEntry = (overrides: Partial<Entry> = {}): Entry => ({
     id: "current-entry",
+    userId: 42,
     title: "",
     content: [""],
     date: "2026-11-13T09:00:00.000Z",
@@ -121,6 +127,8 @@ async function flushEffects() {
 
 describe("EntryEditor AI interactions", () => {
     beforeEach(() => {
+        consent.enabled = true;
+        consent.read.mockReset().mockResolvedValue({cloudAiEnabled: true});
         vi.useFakeTimers();
         vi.stubGlobal("ResizeObserver", class ResizeObserver {
             observe() {}
