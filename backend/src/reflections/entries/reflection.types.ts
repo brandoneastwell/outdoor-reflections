@@ -2,7 +2,7 @@ import type { Reflection } from '../../../generated/prisma/client';
 import { z } from 'zod';
 
 export const ReflectionSchema = z.object({
-  id: z.string(),
+  id: z.guid(),
   title: z.string(),
   content: z.array(z.string()),
   date: z.iso.datetime(),
@@ -17,6 +17,7 @@ export const ReflectionSchema = z.object({
   lastSyncedAt: z.iso.datetime().optional(),
   lastEditedAt: z.iso.datetime(),
   createdAt: z.iso.datetime().optional(),
+  deletedAt: z.iso.datetime().nullish(),
 });
 
 export type SyncResponse = {
@@ -49,6 +50,7 @@ export type ReflectionDto = {
   lastSyncedAt: string | null;
   lastEditedAt: string;
   createdAt: string;
+  deletedAt?: string | null;
 };
 
 export function toReflectionDto(reflection: Reflection): ReflectionDto {
@@ -61,5 +63,8 @@ export function toReflectionDto(reflection: Reflection): ReflectionDto {
     lastSyncedAt: reflection.lastSyncedAt?.toISOString() ?? null,
     createdAt: reflection.createdAt.toISOString(),
     lastEditedAt: reflection.lastEditedAt.toISOString(),
+    ...(reflection.deletedAt && {
+      deletedAt: reflection.deletedAt.toISOString(),
+    }),
   };
 }

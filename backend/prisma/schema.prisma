@@ -45,6 +45,7 @@ model Reflection {
   createdAt    DateTime    @default(now()) @db.Timestamptz(6)
   lastSyncedAt DateTime    @default(now()) @db.Timestamptz(6)
   lastEditedAt DateTime
+  deletedAt    DateTime?   @db.Timestamptz(6)
   user         UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
   suggestions  ReflectionSuggestion[]
 

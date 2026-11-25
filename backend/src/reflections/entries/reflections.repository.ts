@@ -73,11 +73,59 @@ export class ReflectionsRepository {
 
         const existing = await tx.reflection.findUnique({
           where: { id: entry.id },
-          select: {
-            userId: true,
-            lastEditedAt: true,
-          },
         });
+
+        if (entry.deletedAt) {
+          if (!existing || existing.userId === userId) {
+            const deletedAt = new Date(entry.deletedAt);
+            const marker = {
+              title: '',
+              content: [],
+              drawingPaths: [],
+              deletedAt,
+              lastEditedAt: deletedAt,
+              lastSyncedAt: new Date(),
+            };
+
+            if (!existing) {
+              await tx.reflection.createMany({
+                data: {
+                  id: entry.id,
+                  userId,
+                  date: new Date(entry.date),
+                  createdAt: new Date(entry.createdAt ?? entry.lastEditedAt),
+                  ...marker,
+                },
+                skipDuplicates: true,
+              });
+            }
+
+            await tx.reflection.updateMany({
+              where: { id: entry.id, userId, deletedAt: null },
+              data: marker,
+            });
+            const acknowledged = await tx.reflection.findFirst({
+              where: { id: entry.id, userId, deletedAt: { not: null } },
+            });
+            if (acknowledged) {
+              await tx.reflectionSuggestion.deleteMany({
+                where: { reflectionId: acknowledged.id },
+              });
+              results.entriesSynced.push(acknowledged);
+              continue;
+            }
+          }
+          results.entriesFailed.push({
+            entryId: entry.id,
+            error: 'Unable to delete reflection',
+          });
+          continue;
+        }
+
+        if (existing?.userId === userId && existing.deletedAt) {
+          results.entriesSynced.push(existing);
+          continue;
+        }
 
         if (!existing) {
           try {
@@ -96,6 +144,7 @@ export class ReflectionsRepository {
             });
 
             results.entriesCreated.push(res);
+            continue;
           } catch (error) {
             if (error instanceof Prisma.PrismaClientValidationError) {
               results.entriesFailed.push({
@@ -116,6 +165,8 @@ export class ReflectionsRepository {
           const res = await tx.reflection.update({
             where: {
               id: entry.id,
+              userId,
+              deletedAt: null,
               lastEditedAt: {
                 lt: entry.lastEditedAt,
               },

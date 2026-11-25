@@ -44,7 +44,7 @@ describe('SyncService integration', () => {
     testUser = user;
     testReflections = reflections
       .filter((reflection) => reflection.userId === user.id)
-      .map(toReflectionDto);
+      .map((reflection) => toReflectionDto({ ...reflection, deletedAt: null }));
   });
 
   afterAll(async () => {
@@ -181,5 +181,66 @@ describe('SyncService integration', () => {
         }),
       ]),
     );
+  });
+
+  it('acknowledges a deletion on retry and ignores a later upload for the deleted ID', async () => {
+    const original = testReflections[0];
+    const deletedAt = '2026-08-13T12:00:00.000Z';
+    const deletion = { ...original, deletedAt };
+    const attempts = [
+      deletion,
+      deletion,
+      { ...original, lastEditedAt: '2026-08-14T12:00:00.000Z' },
+    ];
+
+    for (const entry of attempts) {
+      const response = await syncService.syncEntries([entry], testUser);
+      expect(response.status).toBe('SUCCESS');
+      expect(response.synced_entries).toEqual([
+        expect.objectContaining({
+          id: original.id,
+          deletedAt: new Date(deletedAt),
+          title: '',
+          content: [],
+          drawingPaths: [],
+        }),
+      ]);
+    }
+  });
+
+  it('records a deletion for an entry that has never reached the server', async () => {
+    const deletion = {
+      ...testReflections[0],
+      id: randomUUID(),
+      deletedAt: '2026-08-13T12:00:00.000Z',
+    };
+
+    const response = await syncService.syncEntries([deletion], testUser);
+
+    expect(response.status).toBe('SUCCESS');
+    expect(response.synced_entries).toEqual([
+      expect.objectContaining({
+        id: deletion.id,
+        deletedAt: new Date(deletion.deletedAt),
+      }),
+    ]);
+  });
+
+  it('rejects a deletion for a reflection owned by another user', async () => {
+    const otherUser = await prisma.userAccount.create({
+      data: { email: 'deletion-test@example.com' },
+    });
+    const deletion = {
+      ...testReflections[0],
+      deletedAt: '2026-08-13T12:00:00.000Z',
+    };
+
+    const response = await syncService.syncEntries([deletion], otherUser);
+
+    expect(response.status).toBe('FAILED');
+    expect(response.synced_entries).toEqual([]);
+    expect(
+      await prisma.reflection.findUnique({ where: { id: deletion.id } }),
+    ).toMatchObject({ userId: testUser.id, deletedAt: null });
   });
 });
