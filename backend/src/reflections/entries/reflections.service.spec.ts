@@ -1,3 +1,4 @@
+import { encryptedFixture } from '../../database/db.seed.helpers';
 import { ReflectionsService } from './reflections.service';
 import { Test } from '@nestjs/testing';
 import { ReflectionsRepository } from './reflections.repository';
@@ -28,14 +29,10 @@ describe('ReflectionsService', () => {
 
   describe('create', () => {
     const mockReflectionEntry: ReflectionDto = {
-      createdAt: '',
-      date: new Date().toISOString(),
       id: randomUUID(),
-      lastSyncedAt: new Date().toISOString(),
+      revision: randomUUID(),
       lastEditedAt: new Date().toISOString(),
-      title: 'test entry',
-      content: ['it is day 3'],
-      drawingPaths: [],
+      payload: encryptedFixture(),
     };
 
     it('should create a new reflection entry', async () => {

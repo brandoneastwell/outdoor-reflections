@@ -10,10 +10,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum SuggestionType {
-  sentence_starter
-}
-
 model UserAccount {
   id          Int          @id @default(autoincrement())
   email       String       @unique
@@ -38,29 +34,15 @@ model AuthProvider {
 model Reflection {
   id           String      @id @db.Uuid
   userId       Int
-  title        String      @db.VarChar(50)
-  content      String[]
-  date         DateTime    @default(now()) @db.Date
-  drawingPaths Json        @default("[]")
+  revision     String      @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  payload      Json?
   createdAt    DateTime    @default(now()) @db.Timestamptz(6)
   lastSyncedAt DateTime    @default(now()) @db.Timestamptz(6)
   lastEditedAt DateTime
   deletedAt    DateTime?   @db.Timestamptz(6)
   user         UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
-  suggestions  ReflectionSuggestion[]
 
   @@map("reflection")
-}
-
-model ReflectionSuggestion {
-  id             String             @id @default(uuid())
-  reflectionId   String             @db.Uuid
-  type           SuggestionType
-  text           String
-  createdAt      DateTime           @default(now())
-  reflection     Reflection  @relation(fields: [reflectionId], references: [id], onDelete: Cascade)
-
-  @@index([reflectionId])
 }
 
 model RefreshToken {

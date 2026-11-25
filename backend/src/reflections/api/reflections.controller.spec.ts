@@ -1,3 +1,4 @@
+import { encryptedFixture } from '../../database/db.seed.helpers';
 import { Test } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
 import { ReflectionsController } from './reflections.controller';
@@ -63,14 +64,10 @@ describe('ReflectionsController', () => {
 
   describe('create', () => {
     const entry: ReflectionDto = {
-      createdAt: '',
-      date: new Date().toISOString(),
       id: randomUUID(),
-      lastSyncedAt: new Date().toISOString(),
+      revision: randomUUID(),
       lastEditedAt: new Date().toISOString(),
-      title: 'test entry',
-      content: ['it is day 3'],
-      drawingPaths: [],
+      payload: encryptedFixture(),
     };
 
     const mockRequest = {

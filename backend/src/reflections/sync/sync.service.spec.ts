@@ -1,3 +1,4 @@
+import { encryptedFixture } from '../../database/db.seed.helpers';
 import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { randomUUID } from 'node:crypto';
@@ -20,13 +21,9 @@ describe('SyncService', () => {
 
   const entry: ReflectionDto = {
     id: randomUUID(),
-    title: 'daily reflection',
-    content: ['first note'],
-    date: new Date('2026-08-13T10:00:00.000Z').toISOString(),
-    drawingPaths: [],
-    lastSyncedAt: new Date('2026-08-13T10:00:00.000Z').toISOString(),
-    lastEditedAt: new Date('2026-08-13T10:00:00.000Z').toISOString(),
-    createdAt: new Date('2026-08-13T10:00:00.000Z').toISOString(),
+    revision: randomUUID(),
+    lastEditedAt: new Date().toISOString(),
+    payload: encryptedFixture(),
   };
 
   beforeEach(async () => {

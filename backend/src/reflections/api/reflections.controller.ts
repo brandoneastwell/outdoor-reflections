@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -12,7 +13,7 @@ import { ReflectionsService } from '../entries/reflections.service';
 import type { Request } from 'express';
 import { SyncService } from '../sync/sync.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth-guard';
-import type { ReflectionDto } from '../entries/reflection.types';
+import { EncryptedReflectionSchema } from '../entries/reflection.types';
 import { SafeUser } from '../../user/user.types';
 import { IntelligenceService } from '../intelligence/intelligence.service';
 import { AiRateLimitExceptionFilter } from './ai-rate-limit.filter';
@@ -28,9 +29,12 @@ export class ReflectionsController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Req() req: Request, @Body() entry: ReflectionDto) {
+  create(@Req() req: Request, @Body() entry: unknown) {
     const user: SafeUser = req.user as SafeUser;
-    return this.reflectionService.createEntry(entry, user.id);
+    const parsed = EncryptedReflectionSchema.safeParse(entry);
+    if (!parsed.success)
+      throw new BadRequestException('Expected an encrypted reflection');
+    return this.reflectionService.createEntry(parsed.data, user.id);
   }
 
   @Get(':id')
@@ -41,7 +45,7 @@ export class ReflectionsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('sync')
-  async sync(@Req() req: Request, @Body() entries: ReflectionDto[]) {
+  async sync(@Req() req: Request, @Body() entries: unknown[]) {
     const user: SafeUser = req.user as SafeUser;
     return this.syncService.syncEntries(entries, user);
   }

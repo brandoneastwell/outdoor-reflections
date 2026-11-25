@@ -1,27 +1,41 @@
 import type { Reflection } from '../../../generated/prisma/client';
 import { z } from 'zod';
 
-export const ReflectionSchema = z.object({
+const metadata = {
   id: z.guid(),
-  title: z.string(),
-  content: z.array(z.string()),
-  date: z.iso.datetime(),
-  drawingPaths: z.array(
-    z
-      .object({
-        path: z.string(),
-        color: z.string(),
-      })
-      .optional(),
-  ),
-  lastSyncedAt: z.iso.datetime().optional(),
+  revision: z.guid(),
   lastEditedAt: z.iso.datetime(),
-  createdAt: z.iso.datetime().optional(),
-  deletedAt: z.iso.datetime().nullish(),
+};
+
+export const EncryptedReflectionSchema = z.strictObject({
+  ...metadata,
+  deletedAt: z.nullish(z.null()),
+  payload: z.strictObject({
+    version: z.literal(1),
+    iv: z.base64().length(16),
+    ciphertext: z.base64().min(24).max(10_000_000),
+  }),
 });
 
+export const ReflectionSchema = z.union([
+  EncryptedReflectionSchema,
+  z.strictObject({
+    ...metadata,
+    deletedAt: z.iso.datetime(),
+    payload: z.null(),
+  }),
+]);
+
+export type ReflectionDto = z.infer<typeof ReflectionSchema>;
+export type SyncAcknowledgement = {
+  id: string;
+  revision: string;
+  lastEditedAt: string;
+  deletedAt: string | null;
+};
+
 export type SyncResponse = {
-  synced_entries: Reflection[];
+  synced_entries: SyncAcknowledgement[];
   timestamp: string;
   service_name: string;
   status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
@@ -31,40 +45,16 @@ export type SyncResponse = {
 };
 
 export type SyncResults = {
-  entriesSynced: Reflection[];
-  entriesCreated: Reflection[];
+  entriesSynced: SyncAcknowledgement[];
+  entriesCreated: SyncAcknowledgement[];
   entriesFailed: { entryId: string; error: string }[];
 };
 
-export type DrawPath = {
-  path: string;
-  color: string;
-};
-
-export type ReflectionDto = {
-  id: string;
-  title: string;
-  content: string[];
-  date: string;
-  drawingPaths: DrawPath[];
-  lastSyncedAt: string | null;
-  lastEditedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
-};
-
-export function toReflectionDto(reflection: Reflection): ReflectionDto {
+export function toReflectionDto(reflection: Reflection): SyncAcknowledgement {
   return {
     id: reflection.id,
-    title: reflection.title,
-    content: reflection.content,
-    date: reflection.date.toISOString(),
-    drawingPaths: reflection.drawingPaths as DrawPath[],
-    lastSyncedAt: reflection.lastSyncedAt?.toISOString() ?? null,
-    createdAt: reflection.createdAt.toISOString(),
+    revision: reflection.revision,
     lastEditedAt: reflection.lastEditedAt.toISOString(),
-    ...(reflection.deletedAt && {
-      deletedAt: reflection.deletedAt.toISOString(),
-    }),
+    deletedAt: reflection.deletedAt?.toISOString() ?? null,
   };
 }

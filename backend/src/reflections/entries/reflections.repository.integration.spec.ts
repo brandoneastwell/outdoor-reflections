@@ -1,3 +1,4 @@
+import { encryptedFixture } from '../../database/db.seed.helpers';
 import { PrismaService } from '../../database/prisma.service';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ReflectionsRepository } from './reflections.repository';
@@ -49,14 +50,10 @@ describe('ReflectionsRepository', () => {
 
   it('should create a new reflections entry in reflections table', async () => {
     const entry: ReflectionDto = {
-      date: new Date().toISOString(),
       id: randomUUID(),
-      lastSyncedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+      revision: randomUUID(),
       lastEditedAt: new Date().toISOString(),
-      title: 'test entry',
-      content: ['it is day 3'],
-      drawingPaths: [],
+      payload: encryptedFixture(),
     };
 
     const before = await prisma.reflection.count();
@@ -70,7 +67,7 @@ describe('ReflectionsRepository', () => {
       data: {
         id: randomUUID(),
         userId: testUserID,
-        title: 'test',
+        payload: encryptedFixture(),
         lastEditedAt: new Date().toISOString(),
       },
     });
