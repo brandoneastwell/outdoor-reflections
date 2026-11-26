@@ -48,12 +48,10 @@ export default function TopBar() {
     if (pathname === "/") return;
 
     return (
-        <div className={"w-full my-5 h-20 flex flex-row place-items-center justify-center items-center gap-1 text-lg"}>
-            <motion.div
+        <div className="my-5 h-20 w-full text-lg">
+            <div
                 ref={topBar}
-                layout
-                transition={{ layout: { duration: 0.22, ease: "easeOut" } }}
-                className="fixed z-50 flex flex-col gap-1 overflow-hidden rounded-2xl border border-white/40 bg-rose/35 p-1 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10">
+                className="fixed inset-x-0 top-9 z-50 mx-auto flex w-fit flex-col gap-1 overflow-hidden rounded-2xl border border-white/40 bg-rose/35 p-1 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10">
                 <div className="flex flex-row gap-1">
                     <BarItem
                         svgPaths={SVG_PATHS.userIcon}
@@ -77,10 +75,9 @@ export default function TopBar() {
                 <AnimatePresence>
                     {dropDownOpen &&
                     <motion.div
-                        layout
-                        initial={{ opacity: 0, height: 0, y: -6 }}
-                        animate={{ opacity: 1, height: "auto", y: 0 }}
-                        exit={{ opacity: 0, height: 0, y: -6 }}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.18, ease: "easeOut" }}
                         className="dropdown z-50 min-w-28 overflow-hidden text-nowrap rounded-xl text-sm font-mono border border-white/20 bg-rose/5 p-1 shadow-[0_8px_32px_rgba(73,88,103,0.18)] backdrop-blur-xl backdrop-saturate-150 ring-1 ring-rose/10"
                     >
@@ -95,7 +92,7 @@ export default function TopBar() {
                     </motion.div>
                     }
                 </AnimatePresence>
-            </motion.div>
+            </div>
             <AccountSettingsDialog
                 open={settingsOpen && Boolean(user.userId)}
                 onOpenChange={setSettingsOpen}
