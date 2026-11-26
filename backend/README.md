@@ -31,8 +31,8 @@
 $ npm install
 ```
 
-Configure the Mailtrap Email Sending API token, a sender address on your
-verified sending domain, and the frontend URL used by password-reset emails:
+Set these values in `backend/.env` and run the backend commands from the
+`backend` directory so NestJS loads that file:
 
 ```dotenv
 SMTP_TOKEN=your-mailtrap-api-token
