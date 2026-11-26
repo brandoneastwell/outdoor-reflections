@@ -6,7 +6,7 @@ import AccountSettingsDialog from "./AccountSettingsDialog";
 import BarItem from "@/components/BarItem";
 import {isEntryEmpty} from "@/utils/entryUtils";
 import {usePathname, useRouter} from "next/navigation";
-import {useJournalUnlocked} from "@/lib/vault/session";
+import {useJournalUnlocked} from "@/lib/vault/encryption-session";
 import {useAuth} from "@/lib/context/auth";
 import {AnimatePresence, motion} from "motion/react";
 

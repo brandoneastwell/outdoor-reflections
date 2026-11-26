@@ -7,7 +7,7 @@ import {prepareVault, unlockVault, type VaultDescriptor} from "@/lib/vault/crypt
 import {
     getVaultGeneration, installVault, listenForJournalLocks, readVaultDescriptor, rememberJournal,
     restoreRememberedJournal, unlockJournal, useJournalUnlocked,
-} from "@/lib/vault/session";
+} from "@/lib/vault/encryption-session";
 
 export default function JournalGate({children}: {children: ReactNode}) {
     const pathname = usePathname();

@@ -1,7 +1,7 @@
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, expect, it, vi} from "vitest";
 import {AuthProvider} from "@/lib/context/authContext";
-import * as vaultSession from "@/lib/vault/session";
+import * as vaultSession from "@/lib/vault/encryption-session";
 import TopBar from "./TopBar";
 
 vi.mock("next/navigation", () => ({

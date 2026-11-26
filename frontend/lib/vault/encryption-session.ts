@@ -16,6 +16,7 @@ export function readVaultDescriptor(): VaultDescriptor | null {
     return stored === null ? null : vaultDescriptorSchema.parse(JSON.parse(stored));
 }
 
+
 function checkBrowserLock() {
     const token = localStorage.getItem(journalLockSignal);
     const changed = observedLockToken !== undefined && observedLockToken !== token;

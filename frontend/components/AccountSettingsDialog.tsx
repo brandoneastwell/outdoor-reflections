@@ -3,7 +3,10 @@
 import {Dialog} from "radix-ui";
 import {useEffect, useState} from "react";
 import {useAuth} from "@/lib/context/auth";
-import {lockJournalEverywhere} from "@/lib/vault/session";
+import {lockJournalEverywhere} from "@/lib/vault/encryption-session";
+
+const sections = ["Preferences", "Recovery"] as const;
+type section = typeof sections[number]
 
 export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocus}: {
     open: boolean;
@@ -11,7 +14,7 @@ export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocu
     onRestoreFocus: () => void;
 }) {
     const {accountSettings, reloadAccountSettings, updateCloudAi} = useAuth();
-    const [section, setSection] = useState<"Privacy" | "Recovery">("Privacy");
+    const [section, setSection] = useState<section>("Preferences");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [locking, setLocking] = useState(false);
@@ -62,7 +65,7 @@ export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocu
                     <Dialog.Description className="sr-only">Manage privacy preferences and journal recovery.</Dialog.Description>
                     <div className="grid min-h-48 grid-cols-[6rem_minmax(0,1fr)] sm:grid-cols-[8rem_minmax(0,1fr)]">
                         <nav aria-label="Settings sections" className="space-y-1 border-r border-rose/15 bg-rose/5 p-2">
-                            {(["Privacy", "Recovery"] as const).map((item) => (
+                            {sections.map((item) => (
                                 <button type="button" key={item} aria-pressed={section === item} onClick={() => setSection(item)}
                                     className="block w-full cursor-pointer rounded-lg px-2 py-2 text-left text-sm hover:bg-rose/10 aria-pressed:bg-rose/15 aria-pressed:font-semibold">
                                     {item}
@@ -70,7 +73,7 @@ export default function AccountSettingsDialog({open, onOpenChange, onRestoreFocu
                             ))}
                         </nav>
                         <section className="space-y-3 p-4 text-sm">
-                            {section === "Privacy" ? <>
+                            {section === "Preferences" ? <>
                                 <h2 className="font-semibold">Cloud AI</h2>
                                 <p id="cloud-ai-disclosure">Turning this on sends readable text from your current draft and up to ten recent reflections to our AI service and its provider, Groq, for writing suggestions.</p>
                                 <label className="flex items-center gap-2">

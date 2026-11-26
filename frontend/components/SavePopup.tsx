@@ -3,7 +3,7 @@
 import {useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
 import Database from "@/lib/database";
-import {useJournalUnlocked} from "@/lib/vault/session";
+import {useJournalUnlocked} from "@/lib/vault/encryption-session";
 import {useAuth} from "@/lib/context/auth";
 import {normalizeEntry} from "@/utils/entryUtils";
 import {Entry} from "@/types/entryTypes";

@@ -1,6 +1,6 @@
 import type {EncryptedEntry, Entry, SyncAcknowledgement} from "@/types/entryTypes";
 import {decryptJson, encryptJson} from "@/lib/vault/crypto";
-import {requireJournalKey} from "@/lib/vault/session";
+import {requireJournalKey} from "@/lib/vault/encryption-session";
 import {z} from "zod";
 
 type DBName = "reflections";

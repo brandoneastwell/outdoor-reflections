@@ -2,7 +2,7 @@ import {webcrypto} from "node:crypto";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import type {Entry} from "@/types/entryTypes";
-import {getVaultGeneration, lockJournal, unlockJournal} from "@/lib/vault/session";
+import {getVaultGeneration, lockJournal, unlockJournal} from "@/lib/vault/encryption-session";
 import EntryEditor from "./EntryEditor";
 
 const databaseMocks = vi.hoisted(() => ({

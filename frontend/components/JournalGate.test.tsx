@@ -7,7 +7,7 @@ import {prepareVault} from "@/lib/vault/crypto";
 import {
     getVaultGeneration, installVault, journalLockSignal, lockJournal, lockJournalEverywhere, rememberJournal,
     requireJournalKey, restoreRememberedJournal, unlockJournal,
-} from "@/lib/vault/session";
+} from "@/lib/vault/encryption-session";
 import {readRememberedKey} from "@/lib/vault/rememberedKey";
 import JournalGate from "./JournalGate";
 

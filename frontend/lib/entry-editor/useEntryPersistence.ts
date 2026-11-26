@@ -4,7 +4,7 @@ import {useAuth} from "@/lib/context/auth";
 import type {Entry, SyncStatus} from "@/types/entryTypes";
 import type {StateSetter} from "@/utils/entryContext";
 import {isEntryBlank} from "./isEntryBlank";
-import {onBeforeJournalLock} from "@/lib/vault/session";
+import {onBeforeJournalLock} from "@/lib/vault/encryption-session";
 
 const db = new Database();
 

@@ -5,7 +5,7 @@ import {afterEach, expect, it, vi} from "vitest";
 import Database from "@/lib/database";
 import type {Entry} from "@/types/entryTypes";
 import {useAuth} from "./auth";
-import {getVaultGeneration, journalLockSignal, lockJournal, requireJournalKey, unlockJournal} from "@/lib/vault/session";
+import {getVaultGeneration, journalLockSignal, lockJournal, requireJournalKey, unlockJournal} from "@/lib/vault/encryption-session";
 import {AuthProvider} from "./authContext";
 
 vi.mock("next/navigation", () => ({useRouter: () => ({push: vi.fn()})}));

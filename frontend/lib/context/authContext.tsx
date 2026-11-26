@@ -8,11 +8,11 @@ import {User} from "@/types/userTypes";
 import type {Providers} from "@/types/authTypes";
 import {SyncResponse} from "@/types/entryTypes";
 import Database from "@/lib/database";
-import {lockJournalEverywhere} from "@/lib/vault/session";
+import {lockJournalEverywhere} from "@/lib/vault/encryption-session";
 import {fetchAccountSettings, type AccountSettings} from "@/lib/api/accountSettings";
 import {z} from "zod";
 
-const lastAccountKey = "outdoor-reflections.last-account";
+const lastAccountKey = "outdoor-reflections.last-account"; // name of localStorage entry, stores numeric ID of the last signed-in account
 const syncAcknowledgements = z.array(z.object({
     id: z.string(),
     revision: z.string(),
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     function setUserId(id: number | null, lockOnChange = true) {
         try {
             const previous = Number(localStorage.getItem(lastAccountKey));
-            if (lockOnChange && previous > 0 && previous !== id) void lockJournalEverywhere().catch(() => {});
+            if (lockOnChange && previous > 0 && previous !== id) lockJournalEverywhere().catch(() => {});
             if (id === null) localStorage.removeItem(lastAccountKey);
             else localStorage.setItem(lastAccountKey, String(id));
         } catch {
